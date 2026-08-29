@@ -8,7 +8,7 @@
 		(title "ESP-32-C3-MINI module, Buttons, LEDs")
 		(date "2026-08-28")
 		(company "UL FRI")
-		(comment 1 "Ime Priimek")
+		(comment 1 "Pa3cio")
 	)
 	(lib_symbols
 		(symbol "Connector_Generic:Conn_01x08"

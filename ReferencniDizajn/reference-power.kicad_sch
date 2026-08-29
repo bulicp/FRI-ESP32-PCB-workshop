@@ -8,7 +8,7 @@
 		(title "USB-C Power Supply")
 		(date "2026-08-28")
 		(company "UL FRI")
-		(comment 1 "Ime Priimek")
+		(comment 1 "Pa3cio")
 	)
 	(lib_symbols
 		(symbol "Connector:USB_C_Receptacle_USB2.0_16P"
@@ -3043,51 +3043,25 @@
 		)
 		(uuid "ff09fde1-bef0-4ad2-b185-398465733092")
 	)
-	(global_label "USB_D-"
-		(shape input)
-		(at 80.01 58.42 90)
-		(fields_autoplaced yes)
+	(label "D+"
+		(at 83.82 60.96 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify left bottom)
 		)
-		(uuid "57991857-eb0e-44a6-983d-c74bd73f84e1")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 80.01 47.8148 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
+		(uuid "cbf5b5d5-f745-4cdb-8e21-4c34eaa6cf53")
 	)
-	(global_label "USB_D+"
-		(shape input)
-		(at 58.42 60.96 270)
-		(fields_autoplaced yes)
+	(label "D-"
+		(at 83.82 58.42 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify left bottom)
 		)
-		(uuid "b02fa1b8-2157-4a75-a602-ec0f813b9ab3")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 58.42 71.5652 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
+		(uuid "ceabe58d-df97-4651-b31e-d5e196b85b41")
 	)
 	(global_label "USB_D-"
 		(shape bidirectional)

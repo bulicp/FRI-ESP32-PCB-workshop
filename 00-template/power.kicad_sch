@@ -1,0 +1,14 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "d02bfd57-a53a-459c-b4d0-3110ce3fa5d8")
+	(paper "A4")
+	(title_block
+		(title "USB-C Power Supply")
+		(date "2026-08-28")
+		(company "UL FRI")
+		(comment 1 "Ime Priimek")
+	)
+	(lib_symbols)
+)

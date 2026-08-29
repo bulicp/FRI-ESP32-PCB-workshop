@@ -1,0 +1,14 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "1f1643c6-5498-4f04-8926-6b5643dc644c")
+	(paper "A4")
+	(title_block
+		(title "ESP-32-C3-MINI module, Buttons, LEDs")
+		(date "2026-08-28")
+		(company "UL FRI")
+		(comment 1 "Ime Priimek")
+	)
+	(lib_symbols)
+)
