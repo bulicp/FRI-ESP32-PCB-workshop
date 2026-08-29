@@ -4,8 +4,8 @@
 
 ### ESP32-C3-MINI-1 Development Board
 
-*Workshop handbook — Faculty of Computer and Information Science, University of Ljubljana*
-*Workshop led by Pa3cio*
+### Workshop handbook ###
+### Pa3cio, Faculty of Computer and Information Science, University of Ljubljana ###
 
 ---
 
@@ -882,16 +882,9 @@ Every capacitor on this board is X5R or X7R. Avoid Y5V and Z5U even though they 
 | PESD5V0L1ULD datasheet | Nexperia |
 | KiCad documentation | docs.kicad.org |
 
----
-
-## Instead of a conclusion
-
-When, years from now, you are writing a driver or choosing a microcontroller for a project, you will know something most programmers never learn: what lies beneath the pin. That someone down there is making sure the voltage is stable, the return paths are short, and the protection is in the right place.
-
-For a few days, that someone was you.
 
 ---
 
-*KiCad PCB Design Workshop*
-*Faculty of Computer and Information Science, University of Ljubljana*
-*Led by Pa3cio*
+### KiCad PCB Design Workshop ###
+### Faculty of Computer and Information Science, University of Ljubljana ###
+### Pa3cio ###
