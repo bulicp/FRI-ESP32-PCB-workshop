@@ -622,7 +622,7 @@ The guiding principle throughout: **components should follow the path of the sig
 
 ### 4.2 Why four layers
 
-![Four-layer PCB stackup](images/stackup_4layer.jpeg)
+![Four-layer PCB stackup](images/stackup_4layer.jpg)
 
 *The classic four-layer arrangement: signals outside, planes inside.*
 
