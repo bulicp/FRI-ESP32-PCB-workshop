@@ -1,4 +1,4 @@
-# Build Your Own Computer
+# Build Your Own ESP32 Computer
 
 ## A KiCad PCB Design Handbook
 
@@ -15,13 +15,13 @@
 >
 > This handbook is for *afterwards*: for the moment you sit in front of an empty project on your own and wonder why something was the way it was. It explains **why**, not **how**.
 >
-> Read it after the workshop, not before.
+> Read it during or after the workshop, not before.
 
 ---
 
 ## 0. What we are building
 
-A small development board, 34.9 × 48.5 mm, four copper layers, built around the **ESP32-C3-MINI-1-N4** module: a 32-bit RISC-V core at 160 MHz, 400 KB SRAM, 4 MB flash, Wi-Fi 4 and Bluetooth 5 LE.
+A small development board, 35 × 48 mm, four copper layers, built around the **ESP32-C3-MINI-1-N4** module: a 32-bit RISC-V core at 160 MHz, 400 KB SRAM, 4 MB flash, Wi-Fi 4 and Bluetooth 5 LE.
 
 | Block | Components |
 |---|---|
@@ -306,6 +306,50 @@ Both capacitors go as physically close as possible to the VIN and VOUT pins, per
 - The pin names carry their alternate functions — `GPIO0/ADC1_CH0/XTAL_32K_P`. When you later wonder whether a pin can do ADC, the answer is already on your own schematic.
 - Note which pins are *not* broken out. GPIO11–GPIO17 do not appear: on the ESP32-C3 they are used internally for the SPI flash. Pins you must not touch are best left off the drawing entirely.
 
+#### First, a little physics: two components that resist change
+
+Almost everything in this handbook about power delivery follows from two equations. They are worth ten minutes even if you have never studied electronics, because once you have them, decoupling stops being a rule you memorise and becomes something you can derive.
+
+**A wire resists change in current.**
+
+```
+u = L · di/dt
+```
+
+A wire — and a PCB trace is a wire — has **inductance** *L*. The voltage that appears across it is proportional not to the current, but to how fast the current is **changing**.
+
+Read what that means at the two extremes. If the current is steady, `di/dt = 0`, so `u = 0`: the wire behaves as though it were not there. A multimeter measuring a trace's resistance reads essentially zero, and it is telling the truth — about DC. But if the current changes abruptly, `di/dt` is enormous, and a voltage appears across that same piece of copper as though a resistor had suddenly materialised in the middle of it.
+
+This "apparent resistance that depends on how fast things change" is not resistance. It is called **impedance**. The distinction matters: resistance is a fixed property of the material, while a trace's impedance grows with frequency — the faster the edge, the more the wire fights back.
+
+How much? A rough figure for a PCB trace is about **1 nH per millimetre**. Take a 10 mm trace, so 10 nH, and a digital circuit that demands an extra 100 mA within a nanosecond as a block of logic switches:
+
+```
+u = 10 nH × (0.1 A / 1 ns) = 10×10⁻⁹ × 10⁸ = 1 V
+```
+
+**One volt**, dropped across a centimetre of copper, on a 3.3 V rail. Not measurable with a multimeter, because it lasts nanoseconds. Entirely sufficient to reset the chip.
+
+**A capacitor resists change in voltage.**
+
+```
+i = C · du/dt
+```
+
+The mirror image. A capacitor stores energy as accumulated charge, and the current through it is proportional to how fast the voltage across it is **changing**.
+
+Again, read the extremes. A constant voltage means `du/dt = 0`, so no current flows: to DC, a capacitor is an open circuit — a break in the wire. But the instant the voltage tries to move, current flows to oppose that movement. The faster the attempted change, the more current the capacitor delivers. Its impedance falls as frequency rises — the exact opposite behaviour to the inductor.
+
+**Now put them together, and the whole thing falls out.**
+
+The trace between the regulator and the chip is an inductance. When the chip demands a sudden burst of current, that inductance produces a voltage drop and the local supply sags. Now place a capacitor right at the chip's supply pin. The sag is a *change in voltage* — precisely what a capacitor opposes. It responds by delivering current locally, immediately, from the charge it holds, and the sag never fully develops.
+
+> **L is the disease, C is the cure.** The inductance of the supply path is what makes fast current demands turn into voltage dips; the capacitance placed next to the load is what supplies those demands locally so the inductance is never asked to.
+
+This is also why *proximity* is not a detail but the entire point. The capacitor helps only across the inductance that lies **between it and the chip**. Put it 2 mm away and it is fighting 2 nH; put it 20 mm away and it is fighting 20 nH, and it has become part of the problem it was meant to solve.
+
+And it explains one more thing you will meet later in this handbook: whenever we say "use two vias in parallel," or "keep the return path directly underneath," or "never cut the ground plane," we are saying the same sentence in different words — **make L smaller.**
+
 #### Why decoupling capacitors exist
 
 Every IC draws current in short, fast pulses as its internal logic switches — not as a smooth, constant draw. If the power pin reached the regulator only through a long trace, that trace's own inductance would prevent the current from responding instantly, and the local supply voltage would sag for a few nanoseconds on every switching edge. That sag is invisible to a multimeter and entirely sufficient to reset a microcontroller or corrupt a Wi-Fi packet.
@@ -578,6 +622,17 @@ The guiding principle throughout: **components should follow the path of the sig
 
 ### 4.2 Why four layers
 
+![Four-layer PCB stackup](images/stackup_4layer.jpeg)
+
+*The classic four-layer arrangement: signals outside, planes inside.*
+
+**What to look for.** The exploded view makes visible what is otherwise buried inside 1.6 mm of fibreglass:
+
+- **The two inner layers are solid sheets, not traces.** That is the entire difference between a two-layer and a four-layer board. Layers 2 and 3 are not "more room for routing" — they are continuous copper, and their value comes precisely from being uninterrupted.
+- **The vertical copper barrels are vias**, passing through the whole stack. Note how a via touches every layer it passes through: this is why an unassigned via sitting inside a pour causes a DRC clearance error, and why a via on the `+3.3V` net automatically joins the power plane without you routing anything.
+- **Layer 2 (GND) sits directly beneath layer 1.** The dielectric between them is thin, typically a few tenths of a millimetre. Every trace on the top layer therefore has its return path a fraction of a millimetre below it. That short vertical distance is what makes the current loop small — the inductance argument from section 2.9, now in three dimensions.
+- The generic diagram labels layer 3 as a single 3.3 V plane. **Ours is slightly different:** `In2.Cu` carries *two* separate islands, `VBUS` before the regulator and `+3.3V` after it, on that same physical layer. Section 4.3 explains how they coexist without touching.
+
 | Layer | Our board |
 |---|---|
 | `F.Cu` (1) | components and signals |
@@ -585,7 +640,39 @@ The guiding principle throughout: **components should follow the path of the sig
 | `In2.Cu` (3) | power islands: `VBUS` and `+3.3V` |
 | `B.Cu` (4) | signals, GND pour |
 
-A two-layer board would be cheaper. Four layers buy two things we need at 160 MHz next to a radio.
+#### Two layers versus four
+
+On a two-layer board there are no inner layers at all: everything — signals, power, ground — shares the top and bottom copper. Ground becomes a patchwork of hand-drawn traces and poured fragments, threaded between whatever else needed to get across the board.
+
+| | Two layers | Four layers |
+|---|---|---|
+| Ground | traces and fragmented pours, routed by hand | one continuous plane |
+| Return path | wherever copper happens to be — often a long detour | directly beneath every trace |
+| Loop area, hence L | large and unpredictable | small and consistent |
+| Power distribution | narrow, meandering traces | a wide, low-impedance plane |
+| Routing space | congested; power and ground consume it | freed up, since power and ground moved inside |
+| EMI | radiates more, picks up more | substantially better |
+| Cost | cheaper | more expensive, though not dramatically at small sizes |
+
+Every line in the right-hand column is the same physics from section 2.9. A continuous plane gives every signal a return path immediately underneath, so the loop the current traces is small, so *L* is small. A poured plane distributes power with far lower resistance and inductance than any trace of practical width. And "never cut the ground plane" means: do not force a return current to detour, because a detour is added loop area, which is added inductance.
+
+#### And yet: this board would work on two layers
+
+It is worth being honest about this rather than pretending otherwise.
+
+Our board has around thirty components and perhaps forty nets. The fastest signal on it is USB Full Speed at 12 Mbit/s — genuinely slow by modern standards. A competent designer could route this on two layers and it would work.
+
+**We chose four layers anyway, for two reasons.**
+
+The first is technical, and modest. The board carries a Wi-Fi radio and a differential pair. Both benefit from a clean ground reference, and both are exactly the kind of thing that behaves *almost* correctly on a compromised ground plane — the failure mode is not a dead board but reduced range or occasional enumeration failures, which are miserable to diagnose. Given the choice, we removed the variable.
+
+The second reason is the honest one: **you are here to learn.**
+
+Four-layer stackups, ground planes, power islands, and via stitching are standard practice on essentially every real embedded board you will encounter afterwards. If you learn them here — on a small, forgiving board with thirty components, where a mistake costs nothing and the design is simple enough to hold in your head — you will already know them when you meet a board where they are not optional. Learning to lay out a ground plane for the first time on a complex, dense, fast board is a much worse experience.
+
+So the fourth layer is partly for the signals and partly for you. That is a legitimate engineering decision when the project is a workshop, and it is worth recognising it as a decision rather than mistaking it for a technical necessity. Knowing *which* of your design choices are forced and which are chosen is itself part of the craft.
+
+Four layers buy two things we need at 160 MHz next to a radio.
 
 **First: the return path.** Current flowing along a signal trace must return somewhere. It returns through ground — and not by the shortest geometric route, but by the route of lowest inductance, which at high frequency means **directly beneath the signal trace**. If `In1.Cu` is a solid, uninterrupted ground plane, every signal has a return path immediately below it. The loop the current traces is small. A small loop means little radiation and little susceptibility to interference.
 
@@ -616,6 +703,8 @@ A via is a plated hole connecting copper on different layers. To connect, say, t
 1. Place a via on that net, at or immediately beside the pad.
 2. The via barrel is plated copper running through the board, touching every layer it passes. It connects automatically to the zone on `In2.Cu` whose net matches.
 3. For power pins — regulator output, VBUS input — use **more than one via in parallel.** This lowers the connection's resistance and inductance and adds redundancy.
+
+Two vias in parallel have roughly half the inductance of one, three have roughly a third. Given `u = L·di/dt` from section 2.9, halving *L* halves the voltage that appears across that connection during a current burst. This is the cheapest improvement available anywhere on a board: one extra via, no extra components, no extra cost.
 
 For GND this matters even more: every ground pad on `F.Cu` should drop a via straight down to `In1.Cu` right at the pad, so return current has the shortest possible path home. The module's central ground array in the image above is the clearest example on the board.
 
