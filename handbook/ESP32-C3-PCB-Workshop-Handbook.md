@@ -723,6 +723,12 @@ every plug insertion pulls on the connector.
 
 #### The common package families
 
+![Common component packages](images/packages.svg)
+
+*The package families from the table below, drawn schematically and not
+to scale. The bottom row shows the parts from underneath, because that is
+where their terminals are.*
+
 | Family | Mounting | Terminals and pitch | Typical use | By hand | On our board |
 |---|---|---|---|---|---|
 | **DIP** (DIL) | THT | two rows, 2.54 mm pitch, rows 7.62 mm apart | classic logic ICs, microcontrollers for breadboards | easy | — |
