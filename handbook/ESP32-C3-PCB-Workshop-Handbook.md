@@ -21,7 +21,7 @@
 
 ## 0. What we are building
 
-A small development board, 35 × 48 mm, four copper layers, built around the **ESP32-C3-MINI-1-N4** module: a 32-bit RISC-V core at 160 MHz, 400 KB SRAM, 4 MB flash, Wi-Fi 4 and Bluetooth 5 LE.
+A small development board, about 35 × 48.5 mm, four copper layers, built around the **ESP32-C3-MINI-1-N4** module: a 32-bit RISC-V core at 160 MHz, 400 KB SRAM, 4 MB flash, Wi-Fi 4 and Bluetooth 5 LE.
 
 | Block | Components |
 |---|---|
@@ -55,7 +55,7 @@ Splitting a schematic into sheets is the same discipline as splitting a program 
 | `TXD0` / `RXD0` | GPIO21 / GPIO20 | on header |
 | `GPIO2_BOOT`, `GPIO8_BOOT`, `GPIO9_BOOT` | GPIO2, 8, 9 | strapping pins |
 | `EN` | pin 8 | reset |
-| `GPIO0`–`GPIO5` | — | free, on headers |
+| `GPIO0`, `GPIO1`, `GPIO3`–`GPIO5` | — | free, on header J3 |
 
 Note the naming convention: every strapping pin carries the `_BOOT` suffix directly in its net label. This is a good habit — anyone reading the schematic immediately knows *"this net affects boot behaviour, don't casually repurpose it."*
 
@@ -84,6 +84,7 @@ You are computer scientists, not electrical engineers. These are the terms this 
 | BOM | Bill of Materials — the component list for purchasing |
 | decoupling capacitor | a capacitor placed at a power pin |
 | differential pair | two traces carrying the same signal in opposite phase |
+| fanout | the short stub and via from a pad down to an inner plane; with planes, this is how power and ground pins are connected |
 
 ---
 
@@ -98,7 +99,7 @@ That is why the same schematic can be realised as a hundred different boards, al
 You make connections two ways:
 
 - **with a wire** (`W`) — a visible line between pins,
-- **with a label** (`L` for local, global for cross-sheet) — two pins carrying the same label are connected even though no line is drawn.
+- **with a label** (`L` for a local label, `Ctrl`+`L` for a global label that crosses sheets) — two pins carrying the same label are connected even though no line is drawn.
 
 Use labels. A schematic with twenty crossing lines is unreadable; a schematic with labels like `SDA`, `LED0`, `GPIO9_BOOT` reads like code.
 
@@ -125,8 +126,8 @@ The ESP32-C3-MINI-1 requires **3.3 V** and does **not** tolerate 5 V. At 5 V it 
 **What to look for in this drawing.** Three details on this one sheet are worth more attention than everything else on it:
 
 1. **The connector symbol lists `D−` twice and `D+` twice** (pins A7/B7 and A6/B6), and in the drawing they are simply wired together. Section 2.4 explains why.
-2. **`SBU1` and `SBU2` carry a blue ×** — the *no-connect* marker. This is not laziness; it is an explicit statement to ERC that leaving these pins unconnected is intentional. An unmarked floating pin is an ERC error; a marked one is documentation.
-3. **`PWR_FLAG` sits on the VBUS net**, not on any component. Section 2.10 explains what it is for.
+2. **`SBU1` and `SBU2` carry a blue ×** — the *no-connect flag*, placed with `Q`. This is not laziness; it is an explicit statement to ERC that leaving these pins unconnected is intentional. An unmarked floating pin is an ERC error; a marked one is documentation (section 2.14).
+3. **`PWR_FLAG` sits on the VBUS net**, not on any component. Section 2.13 explains what it is for.
 
 Also note the drawing hygiene: the protection components sit to the right of the connector, in the direction the signal travels. Signal flows left to right across the sheet, exactly as you read.
 
@@ -336,7 +337,7 @@ Both capacitors go as physically close as possible to the VIN and VOUT pins, per
 **What to look for.** For a sheet holding the most complex component on the board, this drawing is strikingly plain — and that is the lesson:
 
 - **The module has exactly one `3V3` pin (pin 3) and one `GND` pin in the symbol.** All the RF work, the crystal, the flash and the internal supply splitting happen inside the module, where we cannot see them and do not need to. This is the "module as a library" idea made visible.
-- **`C6` (100 nF) and `C7` (10 µF) sit in parallel on that one supply pin.** Two capacitors, two jobs — section 2.9 below.
+- **`C6` (100 nF) and `C7` (10 µF) sit in parallel on that one supply pin.** Two capacitors, two jobs — explained in the subsections below.
 - Every I/O leaves as a **global label**, not a wire. The sheet has no crossing lines at all. Compare this with what the same circuit would look like drawn with wires.
 - The pin names carry their alternate functions — `GPIO0/ADC1_CH0/XTAL_32K_P`. When you later wonder whether a pin can do ADC, the answer is already on your own schematic.
 - Note which pins are *not* broken out. GPIO11–GPIO17 do not appear: on the ESP32-C3 they are used internally for the SPI flash. Pins you must not touch are best left off the drawing entirely.
@@ -427,7 +428,7 @@ A good rule of thumb: **within roughly 1 cm of the pin or branch it serves is pl
 **What to look for.** This single image contains four of this handbook's most important ideas, and the grouping boxes are what make them legible:
 
 - **RESET and USER BUTTON are electrically identical circuits** — 10 kΩ pull-up, 100 nF to ground, switch to ground. Only the net they drive differs: `EN` versus `USER_BTN`. One controls the chip's existence; the other is read by your program. Same electronics, entirely different meaning. This is worth sitting with.
-- **The BOOT block contains three pull-ups but only one button.** `R6` and `R7` pull `GPIO2_BOOT` and `GPIO8_BOOT` high with nothing else attached; only `GPIO9_BOOT` gets a switch. Section 2.10 explains why GPIO9 is the one that matters.
+- **The BOOT block contains three pull-ups but only one button.** `R6` and `R7` pull `GPIO2_BOOT` and `GPIO8_BOOT` high with nothing else attached; only `GPIO9_BOOT` gets a switch. The subsection *BOOT and the strapping pins* below explains why GPIO9 is the one that matters.
 - **`GPIO2_BOOT` and `GPIO8_BOOT` have no 100 nF capacitor**, while every pin with a button does. The capacitor is there for the *switch*, not for the pin — see the debounce discussion below. Circuits without a mechanical contact do not need it.
 - **In the USER LEDs block, the resistor goes to +3.3 V and the GPIO drives the cathode.** Read that connection carefully, then read section 2.11.
 - The four boxes cost nothing electrically and are worth a great deal in readability. A reader identifies "this is the boot circuit" at a glance without tracing a single wire.
@@ -463,13 +464,13 @@ Not for the whole process — only at one specific instant. The strapping pins a
 
 RESET only needs a brief pulse; you do not keep holding it. BOOT, however, must still be held at the moment RESET is released. Hence the familiar instruction: *hold BOOT, tap RESET, release BOOT.*
 
-Many finished boards avoid this dance with an automatic reset circuit — extra transistors driven by a USB-serial adapter's DTR/RTS lines. Since we use the ESP32-C3's native USB and are keeping the circuit legible for teaching, our board uses the manual two-button method.
+Many finished boards avoid this dance with an automatic reset circuit — extra transistors driven by a USB-serial adapter's DTR/RTS lines. Our board needs neither. The ESP32-C3's built-in USB Serial/JTAG controller can put the chip into download mode by itself, so flashing normally works without touching a button. The two-button sequence is the fallback for when that fails, typically when a firmware bug has disabled or crashed the USB peripheral.
 
 #### USER
 
 An entirely ordinary GPIO input on GPIO10, with its own 10 kΩ pull-up. It has no meaning to the boot process; it is simply read by your application code. Electrically identical to the BOOT circuit, connected to a *non-strapping* pin.
 
-> **A warning for later use of the board.** Because the strapping pins are also exposed on the headers, anything you connect to `GPIO2`, `GPIO8` or `GPIO9` that pulls them low at power-on will prevent the board from starting. This is the classic source of *"my board suddenly died"* — it did not die, it is booting into the wrong mode.
+> **A warning for your own designs.** On this board the strapping pins are deliberately kept off the headers (section 2.12). On a board where they are exposed, anything that holds `GPIO9` low at reset sends the chip into download mode instead of starting your firmware, and `GPIO2` and `GPIO8` should also stay pulled up. This is the classic source of *"my board suddenly died"* — it did not die, it is booting into the wrong mode.
 
 #### Why 100 nF next to the switches
 
@@ -544,7 +545,7 @@ J2 carries power only:
 | 1, 8 | +3.3 V | output of the on-board LDO |
 | 3, 4 | VBUS | 5 V straight from the USB connector |
 | 5, 6 | GND | |
-| 2, 7 | — | not connected |
+| 2, 7 | — | not connected; marked with no-connect flags (`Q`), see section 2.14 |
 
 J3 carries signals:
 
@@ -648,12 +649,32 @@ ERC does not check whether your circuit will work. It checks the schematic's **i
 
 | Message | Meaning | Fix |
 |---|---|---|
-| *Input Power pin not driven by Output Power pin* | the `+3.3V` net has no source | add `PWR_FLAG` at the regulator output |
-| *Pin not connected* | a pin is floating | connect it, or mark it no-connect (`Q`) |
+| *Input Power pin not driven by any Output Power pins* | a power net has no source; on our board this is `VBUS`, which comes from a passive connector pin | add `PWR_FLAG` to that net (section 2.13) |
+| *Pin not connected* | a pin is floating | connect it, or mark it with a no-connect flag (`Q`) |
 
 **Run ERC before you begin layout.** Fixing a wiring mistake in the schematic takes thirty seconds; discovering the same mistake after half the board is routed is a different afternoon entirely.
 
-The workshop rule: **zero ERC errors** before moving to layout. Warnings should be reviewed individually — some are genuinely benign, such as an intentionally unconnected pin — but never wave away an error you do not understand.
+The workshop rule: **zero ERC errors** before moving to layout. Warnings should be reviewed individually — some are genuinely benign — but never wave away an error you do not understand.
+
+#### Unconnected pins: the no-connect flag (`Q`)
+
+Every pin of every symbol must be either connected or explicitly declared unused. A pin that is neither triggers ERC's *pin not connected* error, because ERC cannot tell a pin you forgot from a pin you meant to leave open.
+
+To declare a pin unused, press `Q` (or **Place → No Connect Flag**) and click on the end of the pin. A blue × appears. That × is a statement in the schematic: *leaving this pin open is intentional.*
+
+Our schematic has exactly four of them:
+
+| Where | Pins | Why they are unused |
+|---|---|---|
+| J1, USB-C receptacle | `SBU1` (A8), `SBU2` (B8) | *sideband use* pins, needed only for alternate modes such as DisplayPort; USB 2.0 never uses them |
+| J2, power header | pins 2 and 7 | free positions on the header |
+
+Pins that the symbol itself declares as unconnected, such as the regulator's pin 4 and the module's NC pins, need no flag: the symbol already says so.
+
+Two rules keep the flag honest:
+
+- **Flag only pins you have actually decided about.** A × on a pin that should have been connected silences exactly the error that would have caught the mistake.
+- **Never leave a flag on a pin that is also wired.** ERC reports this too. It usually means a wire was added later and the old flag was forgotten.
 
 ---
 
@@ -687,7 +708,7 @@ This is the real lesson: **the intended assembly method should drive footprint c
 
 The outline is drawn on the `Edge.Cuts` layer. The board will be cut along that line. Ours is **34.9 × 48.5 mm**.
 
-Recommendations: rounded corners with a 1–2 mm radius, since sharp corners chip; the USB-C connector at the edge, aligned with the outline; mounting holes ⌀3.2 mm for M3 screws, at least 5 mm from the edge.
+Recommendations: rounded corners with a 1–2 mm radius, since sharp corners chip; the USB-C connector at the edge, aligned with the outline; mounting holes ⌀3.2 mm for M3 screws, at least 5 mm from the edge. (Our board has none: it is meant to sit in a breadboard.)
 
 ---
 
@@ -827,8 +848,8 @@ section 2.9 becomes physical:
   27 `USB_D+`, 30 `RXD0`, 31 `TXD0`. Pads marked `x` are unused; the
   rest are GND.
 - **The nine large pads marked `49 GND` in the centre** are the module's
-  ground and thermal pad array. During routing each gets a via straight
-  down to the ground plane. Together they are the module's main return
+  ground and thermal pad array. During routing it gets several vias down
+  to the ground plane (section 4.4). Together they are the module's main return
   path and its main route for heat.
 - **The two capacitors at the upper left connect `+3.3V` to `GND`** right
   at pin 3, the module's only supply pin. That short distance is the whole
@@ -883,7 +904,7 @@ buried inside 1.6 mm of fibreglass:
 
 | Layer | Our board |
 |---|---|
-| `F.Cu` (1) | components and signals |
+| `F.Cu` (1) | components and signals, GND pour |
 | `In1.Cu` (2) | **solid GND plane** |
 | `In2.Cu` (3) | power islands: `VBUS` and `+3.3V` |
 | `B.Cu` (4) | signals, GND pour |
@@ -984,7 +1005,7 @@ the two apart according to your clearance rule. The result is two
 independent copper islands on the same physical layer that never touch.
 
 The same tool also creates the solid GND plane on `In1.Cu` and the GND
-pour on `B.Cu`.
+pours on the outer layers, `F.Cu` and `B.Cu`.
 
 <!-- TODO screenshot: In2.Cu with both islands filled, other layers hidden -->
 
@@ -996,7 +1017,7 @@ pour on `B.Cu`.
    *Copper Zone Properties* dialog opens. Set:
    - **Layer**: tick `In2.Cu` only. (One zone can span several layers,
      but all its layers share one net. A GND zone can therefore cover
-     `In1.Cu` and `B.Cu` at once; a power island should not.)
+     `F.Cu`, `In1.Cu` and `B.Cu` at once; a power island should not.)
    - **Net**: `VBUS` for the first zone.
    - **Zone name**: something readable, for example `VBUS_island`. You
      will need it in the Zone Manager.
@@ -1104,7 +1125,7 @@ That one rule covers the four jobs vias do on this board:
 | power pin to its island | pad on `F.Cu` | `VBUS` or `+3.3V` zone on `In2.Cu` |
 | ground pin to the plane | pad on `F.Cu` | GND zone on `In1.Cu` |
 | signal changes layer | track on `F.Cu` | track on `B.Cu` |
-| stitching | GND pour on `B.Cu` | GND plane on `In1.Cu` |
+| stitching | GND pours on `F.Cu` and `B.Cu` | GND plane on `In1.Cu` |
 
 Through-hole pads need none of this. The header pins, the USB-C shield
 slots and the button pegs are plated holes themselves, so they connect
@@ -1113,9 +1134,11 @@ to the zone of their net on every layer directly.
 #### Before you start: via size
 
 Via diameter and drill are set per net class in **File → Board Setup →
-Design Rules → Net Classes**. A common choice is a 0.6 mm via with a
-0.3 mm drill. Check it against your manufacturer's standard
-capabilities, because smaller drills usually cost extra.
+Design Rules → Net Classes**. Our board uses a 0.7 mm via with a 0.4 mm
+drill, the same as the global minimum in section 5.1, which any
+four-layer fabricator builds without a query. Smaller vias such as
+0.6 mm / 0.3 mm are widely available too, but check them against your
+manufacturer's standard capabilities first: smaller drills can cost extra.
 
 #### Power pins to their island
 
@@ -1152,7 +1175,7 @@ shoulder-to-shoulder they share their magnetic field and the gain
 shrinks. Given `u = L·di/dt` from section 2.9, halving *L* halves the
 voltage that appears across that connection during a current burst,
 such as a Wi-Fi transmission. The reason is inductance, not current: a
-single 0.3 mm via carries far more current than this whole board draws.
+single via of this size carries far more current than this whole board draws.
 It is the cheapest improvement available anywhere on a board: one extra
 via, no extra components, no extra cost.
 
@@ -1163,6 +1186,10 @@ Exactly the same procedure, on the GND net: every GND pad on `F.Cu` gets
 then has the shortest possible path home. Do not collect several GND
 pads with traces into one shared via. Each trace adds loop area, which
 is exactly what the plane exists to avoid.
+
+The GND pour on `F.Cu` touches many of these pads directly, but that is
+no substitute for the via. Traces and pads cut the top pour into narrow
+fragments, so the via is the pad's real, short connection to ground.
 
 Place vias **beside** small SMD pads, not inside them. An open via inside
 a pad draws solder paste down the hole during reflow and leaves a weak
@@ -1225,10 +1252,10 @@ entirely on `F.Cu`, above the solid ground.
 #### Stitching vias
 
 Stitching vias are GND vias that belong to no pad. They tie the GND
-copper on different layers together, here the `B.Cu` pour to the plane
-on `In1.Cu`.
+copper on different layers together, here the pours on `F.Cu` and
+`B.Cu` to the plane on `In1.Cu`.
 
-They are needed because bottom-layer traces chop the `B.Cu` pour into
+They are needed because traces and pads chop the outer-layer pours into
 fragments. A fragment connected to ground at one point only behaves like
 a small antenna. A fragment connected nowhere is either removed by the
 zone fill or left floating. Stitching turns all GND copper into one
@@ -1236,7 +1263,9 @@ low-impedance structure.
 
 Where to put them:
 
-- **Every `B.Cu` fragment** gets at least two, one at each end.
+- **Every pour fragment** on `F.Cu` or `B.Cu` gets at least two, one at
+  each end. A through via reaches both outer layers, so one via often
+  stitches a top and a bottom fragment at the same time.
 - **Along the board edges** and **around the edge of the antenna
   keepout**. (Not inside it: no copper and no vias there.)
 - **Near the USB connector** and around the module's ground.
@@ -1308,7 +1337,7 @@ For that to work the traces must be:
 
 In KiCad:
 
-1. **Name the nets so KiCad recognises the pair.** KiCad auto-detects pairs from matching suffixes — `+`/`−` or `_P`/`_N`. Our `USB_D+` / `USB_D−` already qualify.
+1. **Name the nets so KiCad recognises the pair.** KiCad auto-detects pairs from matching suffixes — `+`/`-` or `_P`/`_N`. Our `USB_D+` / `USB_D-` already qualify. Type the minus as a plain ASCII hyphen. This handbook prints it as a typographic minus (−) for readability, but KiCad matches the character literally, and a pasted `−` produces a net the pair router will not recognise.
 2. **Set the pair's width and gap** in the net class.
 3. **Route both traces together** with the differential pair router (hotkey `6`). KiCad draws both simultaneously, holding the gap and mitring corners symmetrically.
 4. **Match lengths afterwards if needed** — `Route → Tune Differential Pair Skew` adds small meanders to equalise them.
@@ -1317,20 +1346,20 @@ In KiCad:
 
 ### 5.3 Routing order
 
-1. Power from the regulator to the module.
+1. **Fanout.** Give every power and ground pad its short stub and via down to its plane (section 4.4). On a board with planes, power and ground are not routed as traces from part to part; each pad simply drops a via into its plane, and that *is* the power routing. Do it first, because these vias must sit right beside their pads. Once signal traces have taken that space, there is no room left for them.
 2. Traces from each decoupling capacitor to its supply pin — these should be the shortest on the whole board.
-3. The USB differential pair.
+3. The USB differential pair, entirely on `F.Cu`.
 4. Everything else.
 
 ### 5.4 Pours and stitching vias
 
-Pour GND zones on `F.Cu` and `B.Cu` across the free area, excluding the antenna keepout. Then distribute **stitching vias** across the board to tie the pours on different layers together, so return current anywhere on the board finds a short path to the ground plane.
+Covered in detail in sections 4.3 and 4.4: the GND pours on `F.Cu` and `B.Cu` fill the free area outside the antenna keepout, and **stitching vias** tie them to the plane on `In1.Cu`. Pour and stitch after routing, because every new trace on an outer layer changes where the pour's fragments lie.
 
 ### 5.5 DRC
 
 `Inspect → Design Rules Checker`
 
-DRC checks physics: clearances, whether every schematic connection has actually been routed, whether anything crosses the board outline. Typical findings include traces closer than your clearance setting, drills below your minimum, unrouted ratsnest lines, and net mismatches inside zones — for example a via left without a net assignment sitting inside a same-named pour, which KiCad correctly reports as a clearance violation because it sees the via as electrically unrelated to the copper around it.
+DRC checks physics: clearances, whether every schematic connection has actually been routed, whether anything crosses the board outline. Typical findings include traces closer than your clearance setting, drills below your minimum, unrouted ratsnest lines, and net mismatches inside zones — for example a via without a net assignment sitting inside a GND pour, which KiCad reports as a violation because it sees the via as foreign copper rather than part of the ground.
 
 **Run DRC repeatedly while routing**, not once at the end. Catching a problem three traces after you made it is far easier than after the board is finished.
 
@@ -1405,14 +1434,14 @@ A faulty board can damage the USB port on your computer.
 
 ### 7.2 Sequence
 
-1. The board appears as a serial device (`/dev/cu.usbmodem*` on macOS).
+1. The board appears as a serial device: `/dev/ttyACM0` on Linux, `/dev/cu.usbmodem*` on macOS, a `COM` port on Windows.
 2. Confirm the chip responds and is indeed an ESP32-C3.
 3. Upload a program.
 4. The LED blinks.
 
 When it blinks, you have reached the goal: a program running on a RISC-V core, on a board you drew yourself.
 
-> **A consequence worth remembering.** Because the board has no CP2102 or CH340 converter — the ESP32-C3's USB controller is built in and connected directly to GPIO18/19 — the port appears differently from most development boards. On macOS it is `/dev/cu.usbmodem*`, not `/dev/ttyUSB0`. A great many online tutorials specify `/dev/ttyUSB0`; those are written for boards with a converter chip and will mislead you.
+> **A consequence worth remembering.** Because the board has no CP2102 or CH340 converter — the ESP32-C3's USB controller is built in and connected directly to GPIO18/19 — the port appears differently from most development boards. It is a USB CDC device: `/dev/ttyACM0` on Linux and `/dev/cu.usbmodem*` on macOS. A great many online tutorials specify `/dev/ttyUSB0` or `/dev/cu.usbserial*`; those are written for boards with a converter chip and will mislead you.
 
 Instructions for installing the toolchain are provided separately.
 
@@ -1447,7 +1476,7 @@ Sensible first exercises on your own board:
 | forgotten LED inversion | LED on when it should be off | `LED_ON` / `LED_OFF` macros |
 | regulator capacitors chosen by feel | oscillation on the 3.3 V rail | values from the datasheet table |
 | missing CE pull-up | regulator dead, 0 V out | CE must be held high |
-| loaded strapping pin | board will not start | mind what you attach to GPIO2/8/9 |
+| loaded strapping pin | board will not start | keep GPIO2/8/9 off the headers, as on this board |
 | silkscreen over pads | poor solder joints at assembly | set `min_silk_clearance` and run DRC |
 
 ---
