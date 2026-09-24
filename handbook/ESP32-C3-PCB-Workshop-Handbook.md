@@ -19,6 +19,65 @@
 
 ---
 
+## Contents
+
+- **[0. What we are building](#sec-0)**
+  - [Signal assignment](#sec-0-signal-assignment)
+- **[1. Vocabulary](#sec-1)**
+- **[2. The schematic](#sec-2)**
+  - [2.1 What a schematic is, and what it is not](#sec-2-1)
+  - [2.2 The power chain](#sec-2-2)
+  - [2.3 The USB-C receptacle](#sec-2-3)
+  - [2.4 Why the receptacle has D+/D− in two places](#sec-2-4)
+  - [2.5 CC1 / CC2 — why exactly 5.1 kΩ](#sec-2-5)
+  - [2.6 ESD protection, twice](#sec-2-6)
+  - [2.7 The LDO regulator](#sec-2-7)
+  - [2.8 Regulator capacitors — do not improvise these values](#sec-2-8)
+  - [2.9 The module and its decoupling](#sec-2-9)
+  - [2.10 Buttons, strapping pins and the boot sequence](#sec-2-10)
+  - [2.11 LEDs and the active-low trap](#sec-2-11)
+  - [2.12 Breakout headers, and why the board is not a finished product](#sec-2-12)
+  - [2.13 Schematic grouping and PWR_FLAG](#sec-2-13)
+  - [2.14 ERC](#sec-2-14)
+- **[3. Footprints and board outline](#sec-3)**
+  - [3.1 Footprints: where logic meets physics](#sec-3-1)
+  - [3.2 Package families: through-hole and surface mount](#sec-3-2)
+  - [3.3 Package sizes: 0402 vs 0603 vs 0805](#sec-3-3)
+  - [3.4 Board outline](#sec-3-4)
+- **[4. Layers and placement](#sec-4)**
+  - [4.1 Placement strategy](#sec-4-1)
+  - [4.2 Why four layers](#sec-4-2)
+  - [4.3 Two islands on one layer, and zone priority](#sec-4-3)
+  - [4.4 Vias: connecting pins, layers and planes](#sec-4-4)
+- **[5. Routing](#sec-5)**
+  - [5.1 Net classes](#sec-5-1)
+  - [5.2 Differential pair routing](#sec-5-2)
+  - [5.3 Routing order](#sec-5-3)
+  - [5.4 Pours and stitching vias](#sec-5-4)
+  - [5.5 DRC](#sec-5-5)
+- **[6. Manufacturing outputs](#sec-6)**
+  - [6.1 What the fabricator receives](#sec-6-1)
+  - [6.2 Export](#sec-6-2)
+  - [6.3 Look at what you are sending](#sec-6-3)
+  - [6.4 The BOM](#sec-6-4)
+  - [6.5 DFM: talking to the fabricator](#sec-6-5)
+- **[7. Bringing the board up](#sec-7)**
+  - [7.1 Before plugging in USB](#sec-7-1)
+  - [7.2 Sequence](#sec-7-2)
+  - [7.3 First program](#sec-7-3)
+- **[Appendix A: Common mistakes](#appendix-a)**
+- **[Appendix B: How to select a capacitor](#appendix-b)**
+  - [B.1 Capacitance](#appendix-b-1)
+  - [B.2 Voltage rating — and why to derate](#appendix-b-2)
+  - [B.3 Dielectric class](#appendix-b-3)
+  - [B.4 Checklist before adding a part to the BOM](#appendix-b-4)
+- **[Appendix C: Bill of materials](#appendix-c)**
+- **[Appendix D: Where to go next](#appendix-d)**
+- **[Appendix E: Reference material](#appendix-e)**
+
+---
+
+<a id="sec-0"></a>
 ## 0. What we are building
 
 A small development board, about 35 × 48.5 mm, four copper layers, built around the **ESP32-C3-MINI-1-N4** module: a 32-bit RISC-V core at 160 MHz, 400 KB SRAM, 4 MB flash, Wi-Fi 4 and Bluetooth 5 LE.
@@ -43,6 +102,7 @@ The schematic is split across two sheets:
 
 Splitting a schematic into sheets is the same discipline as splitting a program into modules: one sheet, one job.
 
+<a id="sec-0-signal-assignment"></a>
 ### Signal assignment
 
 | Signal | Module pin | Note |
@@ -61,6 +121,7 @@ Note the naming convention: every strapping pin carries the `_BOOT` suffix direc
 
 ---
 
+<a id="sec-1"></a>
 ## 1. Vocabulary
 
 You are computer scientists, not electrical engineers. These are the terms this handbook assumes, defined once.
@@ -91,8 +152,10 @@ You are computer scientists, not electrical engineers. These are the terms this 
 
 ---
 
+<a id="sec-2"></a>
 ## 2. The schematic
 
+<a id="sec-2-1"></a>
 ### 2.1 What a schematic is, and what it is not
 
 A schematic is **not** a map of the board. It contains no distances, no sizes, no physics. It is a statement of connectivity: *this pin is connected to that pin.* Nothing more.
@@ -108,6 +171,7 @@ Use labels. A schematic with twenty crossing lines is unreadable; a schematic wi
 
 ---
 
+<a id="sec-2-2"></a>
 ### 2.2 The power chain
 
 ```
@@ -120,6 +184,7 @@ The ESP32-C3-MINI-1 requires **3.3 V** and does **not** tolerate 5 V. At 5 V it 
 
 ---
 
+<a id="sec-2-3"></a>
 ### 2.3 The USB-C receptacle
 
 ![Input power and USB-C schematic sheet](images/schematic_inputpower_usb-c.png)
@@ -147,6 +212,7 @@ The pins we do use:
 
 ---
 
+<a id="sec-2-4"></a>
 ### 2.4 Why the receptacle has D+/D− in two places
 
 This trips up almost everyone the first time.
@@ -173,6 +239,7 @@ This is why the digital sheet sees only **one** `USB_D+` and one `USB_D−` net,
 
 ---
 
+<a id="sec-2-5"></a>
 ### 2.5 CC1 / CC2 — why exactly 5.1 kΩ
 
 USB-C decides *whether* to power a cable, *which way round* the plug is,
@@ -242,6 +309,7 @@ Our board is deliberately the simplest possible case: a **fixed sink**, Rd only,
 
 ---
 
+<a id="sec-2-6"></a>
 ### 2.6 ESD protection, twice
 
 When you walk across a carpet to your board, you carry a charge whose voltage can exceed 10 kV in dry air. On contact it discharges within nanoseconds. A modern SoC's I/O pins are rated for a few volts beyond their operating range.
@@ -263,6 +331,7 @@ D+/D− carry a 12 Mbit/s differential signal and need extremely **low parasitic
 
 ---
 
+<a id="sec-2-7"></a>
 ### 2.7 The LDO regulator
 
 ![LDO schematic](images/schematic_LDO.png)
@@ -305,6 +374,7 @@ This comparison is worth studying not for its conclusion but for its shape: **tw
 
 ---
 
+<a id="sec-2-8"></a>
 ### 2.8 Regulator capacitors — do not improvise these values
 
 The XC6220 series requires a *specific, tested* combination of input capacitor (C<sub>IN</sub>) and output capacitor (C<sub>L</sub>) for **phase compensation**. The output capacitor is not a filter that you can size by feel — it is **part of the regulation loop**. Its capacitance and internal resistance (ESR) determine whether the loop is stable or whether the regulator oscillates and delivers something other than DC on its output.
@@ -331,6 +401,7 @@ Both capacitors go as physically close as possible to the VIN and VOUT pins, per
 
 ---
 
+<a id="sec-2-9"></a>
 ### 2.9 The module and its decoupling
 
 ![ESP32-C3-MINI schematic](images/schematic_ESP32-C3-Mini.png)
@@ -422,6 +493,7 @@ A good rule of thumb: **within roughly 1 cm of the pin or branch it serves is pl
 
 ---
 
+<a id="sec-2-10"></a>
 ### 2.10 Buttons, strapping pins and the boot sequence
 
 ![Buttons and LEDs schematic](images/schematic_buttons_and_LEDs.png)
@@ -493,6 +565,7 @@ So in our filter, τ = 1 ms means: within about 1 ms of a clean edge the filtere
 
 ---
 
+<a id="sec-2-11"></a>
 ### 2.11 LEDs and the active-low trap
 
 Both LEDs are wired **active LOW**: the anode goes through a resistor to +3.3 V, and the cathode connects to the GPIO. **The LED lights when the GPIO is driven to logic 0.**
@@ -523,6 +596,7 @@ Plenty bright for an indicator with modern LEDs, and comfortably below the ESP32
 
 ---
 
+<a id="sec-2-12"></a>
 ### 2.12 Breakout headers, and why the board is not a finished product
 
 ![Breakout headers J2 (power) and J3 (signals). The red crosses are
@@ -623,6 +697,7 @@ There are three reasons for this:
 
 ---
 
+<a id="sec-2-13"></a>
 ### 2.13 Schematic grouping and PWR_FLAG
 
 **Grouping.** You will have noticed that both sheets place related components inside visual boxes — one around the USB-C connector with its CC resistors and protection, another around the regulator and its capacitors, four around the button and LED circuits. This costs nothing electrically and is worth a great deal:
@@ -639,6 +714,7 @@ Placing a `PWR_FLAG` is you telling ERC explicitly: *this net is genuinely power
 
 ---
 
+<a id="sec-2-14"></a>
 ### 2.14 ERC
 
 `Inspect → Electrical Rules Checker`
@@ -681,8 +757,10 @@ Two rules keep the flag honest:
 
 ---
 
+<a id="sec-3"></a>
 ## 3. Footprints and board outline
 
+<a id="sec-3-1"></a>
 ### 3.1 Footprints: where logic meets physics
 
 A symbol has no size. A footprint does. Every component must be assigned one — the actual pattern of copper pads it will be soldered to.
@@ -693,6 +771,7 @@ A symbol has no size. A footprint does. Every component must be assigned one —
 
 The USB-C connector deserves particular care: the footprint must match **exactly the connector you will buy** (here GT-USB-7010ASV). USB-C receptacles from different manufacturers are not interchangeable, despite looking identical from the outside.
 
+<a id="sec-3-2"></a>
 ### 3.2 Package families: through-hole and surface mount
 
 A **package** is the physical housing of a component: its body and the
@@ -773,6 +852,7 @@ the pitch, for example `SOIC-8_3.9x4.9mm_P1.27mm` or
 `SOT-23-5`. Reading that name is usually enough to tell whether a
 footprint matches the datasheet drawing, but check the drawing anyway.
 
+<a id="sec-3-3"></a>
 ### 3.3 Package sizes: 0402 vs 0603 vs 0805
 
 | Package | Metric | Size (L×W) | Hand-solderable? | Notes |
@@ -787,6 +867,7 @@ If your own next board is to be **hand-soldered**, revisit this before ordering:
 
 This is the real lesson: **the intended assembly method should drive footprint choice**, not a vague preference for "smaller is more modern."
 
+<a id="sec-3-4"></a>
 ### 3.4 Board outline
 
 The outline is drawn on the `Edge.Cuts` layer. The board will be cut along that line. Ours is **34.9 × 48.5 mm**.
@@ -795,8 +876,10 @@ Recommendations: rounded corners with a 1–2 mm radius, since sharp corners chi
 
 ---
 
+<a id="sec-4"></a>
 ## 4. Layers and placement
 
+<a id="sec-4-1"></a>
 ### 4.1 Placement strategy
 
 Placement is where most of a board's quality is decided. Routing only
@@ -954,6 +1037,7 @@ section 2.9 becomes physical:
 
 ---
 
+<a id="sec-4-2"></a>
 ### 4.2 Why four layers
 
 ![Four-layer PCB stackup](images/stackup_4layer.jpg)
@@ -1078,6 +1162,7 @@ Recognise it as a decision, not a technical necessity: knowing *which* of
 your design choices are forced and which are chosen is itself part of
 the craft.
 
+<a id="sec-4-3"></a>
 ### 4.3 Two islands on one layer, and zone priority
 
 Rather than routing VBUS and +3.3 V as traces, we pour them as **copper
@@ -1354,6 +1439,7 @@ gap.*
   Press `B` first. An unrefilled zone shows the state before your last
   edit.
 
+<a id="sec-4-4"></a>
 ### 4.4 Vias: connecting pins, layers and planes
 
 A via is a plated hole joining copper on different layers. On our board
@@ -1552,8 +1638,10 @@ antipads do not merge into a slot (section 4.2).
 
 ---
 
+<a id="sec-5"></a>
 ## 5. Routing
 
+<a id="sec-5-1"></a>
 ### 5.1 Net classes
 
 Not all connections are equal. Power carries current and needs wider traces; USB is a differential pair with its own rules; ordinary GPIO is undemanding.
@@ -1572,6 +1660,7 @@ Think of net classes as *what I want by default*, and the Constraints tab as *th
 
 Once classes are configured, the router applies the correct width automatically. No manual switching, no forgotten thin power traces.
 
+<a id="sec-5-2"></a>
 ### 5.2 Differential pair routing
 
 USB does not travel on one wire but two: `D+` and `D−` carry the same information in opposite phase, and the receiver looks at the **difference** between them. Interference that strikes both traces equally cancels in the subtraction.
@@ -1592,6 +1681,7 @@ In KiCad:
 
 > **A mitigating circumstance.** USB 2.0 Full Speed at 12 Mbit/s is relatively forgiving, and the path on our board is short. Respect the rules, but do not be paralysed by them — this is not USB 3.0 at 5 Gbit/s, and matching within a few millimetres is more than sufficient here.
 
+<a id="sec-5-3"></a>
 ### 5.3 Routing order
 
 1. **Fanout.** Give every power and ground pad its short stub and via down to its plane (section 4.4). On a board with planes, power and ground are not routed as traces from part to part; each pad simply drops a via into its plane, and that *is* the power routing. Do it first, because these vias must sit right beside their pads. Once signal traces have taken that space, there is no room left for them.
@@ -1599,10 +1689,12 @@ In KiCad:
 3. The USB differential pair, entirely on `F.Cu`.
 4. Everything else.
 
+<a id="sec-5-4"></a>
 ### 5.4 Pours and stitching vias
 
 Covered in detail in sections 4.3 and 4.4: the GND pours on `F.Cu` and `B.Cu` fill the free area outside the antenna keepout, and **stitching vias** tie them to the plane on `In1.Cu`. Pour and stitch after routing, because every new trace on an outer layer changes where the pour's fragments lie.
 
+<a id="sec-5-5"></a>
 ### 5.5 DRC
 
 `Inspect → Design Rules Checker`
@@ -1617,8 +1709,10 @@ If you find a violation you do not understand, click it — the tool takes you t
 
 ---
 
+<a id="sec-6"></a>
 ## 6. Manufacturing outputs
 
+<a id="sec-6-1"></a>
 ### 6.1 What the fabricator receives
 
 Not your KiCad project, but:
@@ -1632,12 +1726,14 @@ Not your KiCad project, but:
 
 Gerber is an old, textual and surprisingly simple format — essentially a list of *"move here, draw this"* commands. Open one in a text editor; it is worth seeing what you actually send.
 
+<a id="sec-6-2"></a>
 ### 6.2 Export
 
 `File → Fabrication Outputs → Gerbers`
 
 Export `F.Cu`, `In1.Cu`, `In2.Cu`, `B.Cu`, `F.Mask`, `B.Mask`, `F.Silkscreen`, `B.Silkscreen`, `F.Paste`, `B.Paste`, `Edge.Cuts`. Then `Generate Drill Files`.
 
+<a id="sec-6-3"></a>
 ### 6.3 Look at what you are sending
 
 **Never send Gerbers you have not viewed.** Open them in a viewer — GerbView ships with KiCad — and check layer by layer:
@@ -1650,12 +1746,14 @@ Export `F.Cu`, `In1.Cu`, `In2.Cu`, `B.Cu`, `F.Mask`, `B.Mask`, `F.Silkscreen`, `
 
 This is the equivalent of reading your code before committing it. It takes ten minutes and saves three weeks of waiting for the wrong board.
 
+<a id="sec-6-4"></a>
 ### 6.4 The BOM
 
 A BOM is not merely a list. For assembly, every line must identify **one and only one** component — hence the catalogue numbers alongside the values. "10 µF" says nothing about voltage rating, dielectric or package. A catalogue number says everything.
 
 > **Check particularly** the components whose polarity or orientation is not obvious: LEDs, protection diodes, the regulator, the connector. A part fitted backwards is not the fabricator's mistake if that is how you submitted it.
 
+<a id="sec-6-5"></a>
 ### 6.5 DFM: talking to the fabricator
 
 Every fabricator has its own limits: minimum track width, minimum clearance, minimum via diameter, minimum annular ring. You need these numbers **before** routing, not after.
@@ -1670,8 +1768,10 @@ Every fabricator has its own limits: minimum track width, minimum clearance, min
 
 ---
 
+<a id="sec-7"></a>
 ## 7. Bringing the board up
 
+<a id="sec-7-1"></a>
 ### 7.1 Before plugging in USB
 
 A faulty board can damage the USB port on your computer.
@@ -1680,6 +1780,7 @@ A faulty board can damage the USB port on your computer.
 2. **Ohmmeter check** — resistance between `+3.3V` and `GND`, and between `VBUS` and `GND`. If either is close to zero, you have a short. **Do not plug it in.**
 3. Only then, USB.
 
+<a id="sec-7-2"></a>
 ### 7.2 Sequence
 
 1. The board appears as a serial device: `/dev/ttyACM0` on Linux, `/dev/cu.usbmodem*` on macOS, a `COM` port on Windows.
@@ -1693,6 +1794,7 @@ When it blinks, you have reached the goal: a program running on a RISC-V core, o
 
 Instructions for installing the toolchain are provided separately.
 
+<a id="sec-7-3"></a>
 ### 7.3 First program
 
 ```c
@@ -1712,6 +1814,7 @@ Sensible first exercises on your own board:
 
 ---
 
+<a id="appendix-a"></a>
 ## Appendix A: Common mistakes
 
 | Mistake | Symptom | Prevention |
@@ -1729,14 +1832,17 @@ Sensible first exercises on your own board:
 
 ---
 
+<a id="appendix-b"></a>
 ## Appendix B: How to select a capacitor
 
 Beyond the nominal value, three parameters matter.
 
+<a id="appendix-b-1"></a>
 ### B.1 Capacitance
 
 Match the value called for by the datasheet or your calculation. Going *higher* is usually safe for bulk and decoupling capacitors; going *lower* than a specified value can break stability, as with the LDO in section 2.8.
 
+<a id="appendix-b-2"></a>
 ### B.2 Voltage rating — and why to derate
 
 Always choose a rated voltage **comfortably above** the actual working voltage; a good rule of thumb is **at least 2×**.
@@ -1745,6 +1851,7 @@ This matters because of an effect specific to ceramic capacitors called **DC bia
 
 A 10 µF part rated at 6.3 V, used on a 5 V rail, may deliver noticeably less than 10 µF in practice. The same nominal 10 µF rated at 16 V, on that same 5 V rail, stays much closer to its printed value. This is why our 5 V and 3.3 V rails specify **16 V** parts even though the circuit never exceeds 5 V.
 
+<a id="appendix-b-3"></a>
 ### B.3 Dielectric class
 
 | Dielectric | Stability | Typical use |
@@ -1756,6 +1863,7 @@ A 10 µF part rated at 6.3 V, used on a 5 V rail, may deliver noticeably less th
 
 Every capacitor on this board is X5R or X7R. Avoid Y5V and Z5U even though they are often the cheapest option; the swing under temperature and bias can be severe enough to undermine exactly the stability the capacitor is there to provide.
 
+<a id="appendix-b-4"></a>
 ### B.4 Checklist before adding a part to the BOM
 
 1. Capacitance meets or exceeds the requirement
@@ -1765,6 +1873,7 @@ Every capacitor on this board is X5R or X7R. Avoid Y5V and Z5U even though they 
 
 ---
 
+<a id="appendix-c"></a>
 ## Appendix C: Bill of materials
 
 Part data checked against LCSC/JLCPCB in September 2026. Stock changes
@@ -1833,6 +1942,7 @@ weekly: always check availability before ordering.
 
 ---
 
+<a id="appendix-d"></a>
 ## Appendix D: Where to go next
 
 - **I²C sensors** — `GPIO4` and `GPIO5` are on the header. I²C is open-collector: devices can only pull the line low, so the bus needs pull-up resistors, typically 4.7 kΩ. A digital temperature or pressure sensor is the natural next step.
@@ -1842,6 +1952,7 @@ weekly: always check availability before ordering.
 
 ---
 
+<a id="appendix-e"></a>
 ## Appendix E: Reference material
 
 | Document | Source |
