@@ -177,7 +177,7 @@ the two CC lines. Both ends measure the CC voltage, but for different reasons.
 
 ![CC divider: the source's Rp and our board's Rd meet on the single CC wire.
 The source measures to detect attachment and orientation; the sink may measure
-to learn the advertised current.](figures/usb-c-cc-divider.svg)
+to learn the advertised current.](images/usb-c-cc-divider.svg)
 
 *Further reading: Texas Instruments, "USB Type-C Configuration Channel (CC)
 Controller Selection Guide", SDAA284, March 2026.*
@@ -522,7 +522,7 @@ Plenty bright for an indicator with modern LEDs, and comfortably below the ESP32
 ### 2.12 Breakout headers, and why the board is not a finished product
 
 ![Breakout headers J2 (power) and J3 (signals). The red crosses are
-KiCad's marking for DNP (Do Not Populate) symbols.](figures/pin-headers-schematic.png)
+KiCad's marking for DNP (Do Not Populate) symbols.](images/pin-headers-schematic.png)
 
 Two 8-pin headers (`Conn_01x08`, 2.54 mm pitch) bring the board's power
 rails and all spare GPIOs out to the edge. This is a deliberate decision.
