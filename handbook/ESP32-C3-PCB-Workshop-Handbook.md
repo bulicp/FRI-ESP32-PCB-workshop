@@ -695,53 +695,158 @@ Recommendations: rounded corners with a 1–2 mm radius, since sharp corners chi
 
 ### 4.1 Placement strategy
 
+Placement is where most of a board's quality is decided. Routing only
+connects what placement has already arranged: a well-placed board almost
+routes itself, and a badly placed one cannot be rescued by clever routing.
+
+#### How to read the layout screenshots
+
+All screenshots in this section show KiCad's PCB editor after placement
+and before routing. The colours (KiCad's default theme) carry meaning:
+
+| What you see | KiCad layer / object | Meaning |
+|---|---|---|
+| red pads with labels | `F.Cu` pads | copper; label = pad number and net name |
+| magenta rectangle | `F.Courtyard` | space the part claims; courtyards must not overlap |
+| cyan rectangle | `B.Courtyard` | the same, for parts on the **back** side |
+| yellow lines, triangles | `F.Silkscreen` | printed outline and pin-1 marker |
+| grey outline | `F.Fab` | physical body of the part; documentation only, not manufactured |
+| thin cyan lines | ratsnest | connections that still have to be routed |
+| filled cyan circles | non-plated holes | locating pegs of the USB-C connector |
+| hatched red area | rule area (keepout) | no copper allowed |
+
+Nothing in these screenshots is routed yet: there are no traces and no
+vias. Every connection is still a ratsnest line.
+
+#### The order of placement
+
+1. **Fixed components**: parts whose position is dictated by the outside
+   world. The USB-C connector goes on an edge, the headers along the long
+   edges, buttons and LEDs where fingers and eyes can reach them.
+   (Our board has no mounting holes; if yours does, they belong here too.)
+2. **The module**, with its antenna at the board edge and the keepout
+   beside it.
+3. **The power chain**, in the order the current flows: protection at
+   the connector, then the regulator, then its capacitors.
+4. **Decoupling capacitors**, each right beside the supply pin it serves,
+   typically within 2 mm.
+5. **Everything else**: pull-ups, RC networks, LED resistors.
+
+The guiding principle throughout: **components follow the path of the
+signal.** If the signal travels from left to right in the schematic, let
+it travel from left to right on the board. A board that looks like its
+schematic routes almost by itself.
+
 ![Complete board placement](images/layout_board.png)
 
-*The whole board with all footprints placed and nothing routed yet — the state at the end of placement.*
+*The whole board with every footprint placed and nothing routed yet.*
 
-**What to look for.** This is the single most informative image in the handbook, because it shows the board at the moment when every decision has been made and nothing has been committed:
+**What to look for.** This is the most informative image in the handbook,
+because it shows the board at the moment when every decision has been
+made and nothing has been committed:
 
-- **The hatched red band across the top is the antenna keepout.** The module sits with its antenna hanging over the board edge, and no copper — on any layer — is permitted in that region. Everything else on the board was arranged around this constraint, not the other way round.
-- **The two 1×8 headers run down the left and right edges**, as far apart as the board allows. That is what makes the board breadboard-friendly and it is a mechanical decision taken before any electrical one.
-- **The USB-C connector sits centred on the bottom edge**, with the power cluster — protection, regulator, capacitors — immediately above it. Power flows bottom to top; the module sits at the top. The signal path across the physical board mirrors the signal path across the schematic.
-- **RESET is at bottom left, BOOT at bottom right**, both reachable while the board is plugged in and both far enough apart that you can press them with two fingers. Try holding BOOT and tapping RESET on a board where they are 5 mm apart and you will understand why.
-- **The ratsnest lines fan out from the module in all directions.** Their number and length is your placement feedback: long crossing lines mean components in the wrong place. Fix that here, not with clever routing later.
-- Small capacitors sit tucked immediately beside the pins they serve, not tidily lined up along an edge. Tidiness is not the goal; proximity is.
-
-Work in this order:
-
-1. **Fixed components** — the USB-C connector at the edge, mounting holes, headers along the edges, LEDs and buttons where the user can reach them.
-2. **The module** — antenna at the board edge, no copper beneath it in *any* layer.
-3. **The power chain** — protection immediately at the connector, then the regulator, then its capacitors.
-4. **Decoupling capacitors** — each right beside its supply pin, typically under 2 mm. These go before any other routing consideration.
-5. **Everything else.**
-
-The guiding principle throughout: **components should follow the path of the signal.** If the signal travels left to right in the schematic, let it travel left to right on the board. A board that looks like its schematic routes almost by itself.
+- **The hatched red band across the top is the antenna keepout.** The
+  module sits at the top with its antenna end flush with the board edge,
+  and the keepout spans the full width of the board. No copper is allowed
+  there on *any* layer: no pours, no plane, nothing on the inner layers.
+  Copper near the antenna detunes it and costs range. Everything else on
+  the board was arranged around this constraint, not the other way round.
+- **The two 1×8 headers run down the left and right edges.** J2 carries
+  power, J3 carries signals (section 2.12). They are placed on the **back**
+  side (cyan courtyard), so the pins point down into a breadboard while
+  the components face up. What makes the board breadboard-compatible is
+  not the distance between the headers itself, but that it is an exact
+  multiple of 2.54 mm: only then do both rows land on the breadboard grid.
+- **The USB-C connector sits centred on the bottom edge**, with the power
+  cluster immediately above it. Power flows from bottom to top, and the
+  module sits at the top. The physical layout mirrors the schematic.
+- **RESET (the EN pin) is at bottom left and BOOT (GPIO9) at bottom
+  right.** Thanks to the built-in USB Serial/JTAG you rarely need them.
+  But when a firmware bug locks up the USB port, holding BOOT and tapping
+  RESET is the only way back, and that is much easier with the buttons in
+  opposite corners than with the buttons 5 mm apart.
+- **Each button has two small companions**: a pull-up resistor next to it
+  and a capacitor below it. On EN this RC network delays the chip's start
+  until the supply has settled; on the other buttons it filters contact
+  bounce.
+- **The ratsnest lines fan out from the module in all directions.** Their
+  number and length are your placement feedback: long, crossing lines mean
+  components in the wrong place. Fix that here, not with clever routing
+  later.
+- **Small parts sit beside the pins they serve**, not tidily lined up
+  along an edge. Tidiness is not the goal; proximity is.
 
 ![Power cluster close-up](images/layout_USB-c-and-power.png)
 
-*The power cluster: connector, ESD protection, regulator and capacitors, in the order the current travels.*
+*The power cluster: connector, protection, regulator and capacitors, in
+the order the current travels.*
 
-**What to look for.** This is placement principle 3 made concrete, and it repays close reading:
+**What to look for.** This is step 3 of the placement order made concrete:
 
-- **Trace the physical order upward from the connector**: USB-C pads → CC resistors and the VBUS diode → the USBLC6 (right) and the LDO (left) → the regulator's capacitors. Current enters at the bottom and leaves at the top as +3.3 V. Nothing doubles back.
-- **The USBLC6 is placed with its three input pads facing the connector and its three output pads facing away.** Signal enters one side and leaves the other; the part is not rotated arbitrarily. Rotating it 180° would work electrically and would lengthen every trace.
-- **The LDO's pads are readable in this view**: `1 VBUS`, `2 GND`, `3 Net-(U2-CE)`, `4` unused, `5 +3.3V`. Compare this against the schematic in section 2.7 — the same five pins, the same connections, now with physical positions attached. Learning to move between these two views fluently is most of what PCB design is.
-- **The two capacitors sit on opposite sides of the regulator**, input capacitor near pin 1, output capacitor near pin 5. Neither is more than a couple of millimetres from the pin it serves, exactly as the datasheet's layout note requires.
-- The short grey stubs already drawn at some pads are **fanout traces** — the first, deliberate connections from pad to via, placed during placement rather than routing. Getting power pins onto their plane early makes the rest of the routing simpler.
+- **Trace the order upward from the connector**: the USB-C pads, then the
+  VBUS protection diode and the two 5.1 kΩ CC resistors, then the LDO
+  (left) and the USBLC6 (right), then the regulator's output capacitor.
+  Current enters at the bottom and leaves at the top as +3.3 V. Nothing
+  doubles back.
+- **The protection diode sits directly at the VBUS pad (A4).** Protection
+  must be the first thing a voltage spike meets, before it reaches
+  anything it could damage.
+- **Each CC resistor sits directly above its own pin**: CC1 above A5,
+  CC2 above B5 (section 2.5).
+- **D+ and D− appear twice on the connector** (A6/B6 and A7/B7), because
+  the plug is reversible. The two copies of each are joined before they
+  reach the USBLC6.
+- **The USBLC6 faces the connector with pads 1 (D−), 2 (GND) and 3 (D+)**,
+  and faces the module with pads 6 (USB_D−), 5 (VBUS) and 4 (USB_D+).
+  The data lines enter one side and leave the other. Rotated by 180° the
+  part would still work electrically, but the traces would have to cross.
+- **The LDO's pads are readable here**: `1 VBUS`, `2 GND`, `3 CE`,
+  `4` unused, `5 +3.3V`. Compare them with the schematic in section 2.7:
+  the same five pins and the same connections, now with physical
+  positions. Moving fluently between these two views is most of what PCB
+  design is.
+- **The input capacitor (10 µF, VBUS to GND) sits directly left of pins 1
+  and 2; the output capacitor (4.7 µF, +3.3 V to GND) sits directly above
+  pin 5.** Each is within a couple of millimetres of the pin it serves,
+  as the datasheet's layout note requires.
+- **The small resistor just below the LDO ties CE to VBUS**: the
+  regulator switches on whenever USB power is present.
 
 ![Module and user peripherals close-up](images/layout_ESP32_userbutton_LEDs.png)
 
-*The module footprint with its decoupling capacitors, the two LEDs, and the user button.*
+*The module footprint with its decoupling capacitors, strapping
+pull-ups, the two LEDs and the user button.*
 
-**What to look for.** This close-up is where the decoupling discussion of section 2.9 becomes physical:
+**What to look for.** This is where the decoupling discussion of
+section 2.9 becomes physical:
 
-- **The nine large pads marked `49 GND` in the centre** are the module's thermal and ground pad array. They are not decorative: every one of them wants a via straight down to the ground plane. That array is the module's main return path.
-- **The two 0805 capacitors at the upper left connect `+3.3V` to `GND`** and sit as close to the module's supply pin as the footprint permits. That distance is the whole point — a few millimetres further and their inductance would begin to matter.
-- **The pads around the module's edges carry their net names**, so you can read the pinout directly off the layout: `GPIO2_BOOT`, `GPIO3`, `EN`, `USB_D+`, `USB_D−`, `LED0`, `LED1`, `USER_BTN`, `TXD0`, `RXD0`. Pads marked `x` are deliberately unused.
-- **The LEDs sit side by side with their series resistors immediately below**, each pair forming an obvious visual unit. Physical grouping of functionally related parts makes a board readable in the same way that schematic grouping does.
-- **The user button is placed well clear of the module**, with room around it for a finger. Ergonomics is a layout constraint like any other.
-- Note again the hatched keepout at the top and the complete absence of anything beneath the antenna.
+- **The pads carry their net names, so you can read the pinout directly
+  off the layout**: pin 3 `+3.3V`, 5 `GPIO2_BOOT`, 6 `GPIO3`, 8 `EN`,
+  12 `GPIO0`, 13 `GPIO1`, 16 `USER_BTN`, 18 `GPIO4`, 19 `GPIO5`,
+  20 `LED0`, 21 `LED1`, 22 `GPIO8_BOOT`, 23 `GPIO9_BOOT`, 26 `USB_D−`,
+  27 `USB_D+`, 30 `RXD0`, 31 `TXD0`. Pads marked `x` are unused; the
+  rest are GND.
+- **The nine large pads marked `49 GND` in the centre** are the module's
+  ground and thermal pad array. During routing each gets a via straight
+  down to the ground plane. Together they are the module's main return
+  path and its main route for heat.
+- **The two capacitors at the upper left connect `+3.3V` to `GND`** right
+  at pin 3, the module's only supply pin. That short distance is the whole
+  point: a few millimetres further and the inductance of the connection
+  would start to matter.
+- **Two tiny resistors next to the module are the strapping pull-ups**:
+  one beside pin 5 (GPIO2), one below the module at pin 22 (GPIO8). The
+  ESP32-C3 reads these pins at reset to decide how to boot, so their
+  pull-ups belong close to the pins.
+- **Each LED has its series resistor immediately below it**, forming an
+  obvious visual pair. The resistors go to `+3.3V` and the LED cathodes
+  go to the GPIO, so the LEDs are **active-low**: they light when the pin
+  is driven low. That is why the firmware uses `LED_ON`/`LED_OFF` macros.
+- **The user button is placed well clear of the module**, with room for a
+  finger, its pull-up above and its debounce capacitor below. Ergonomics
+  is a layout constraint like any other.
+- Note again the hatched keepout at the top and the complete absence of
+  anything beneath the antenna.
 
 ---
 
@@ -751,12 +856,30 @@ The guiding principle throughout: **components should follow the path of the sig
 
 *The classic four-layer arrangement: signals outside, planes inside.*
 
-**What to look for.** The exploded view makes visible what is otherwise buried inside 1.6 mm of fibreglass:
+**What to look for.** The exploded view makes visible what is otherwise
+buried inside 1.6 mm of fibreglass:
 
-- **The two inner layers are solid sheets, not traces.** That is the entire difference between a two-layer and a four-layer board. Layers 2 and 3 are not "more room for routing" — they are continuous copper, and their value comes precisely from being uninterrupted.
-- **The vertical copper barrels are vias**, passing through the whole stack. Note how a via touches every layer it passes through: this is why an unassigned via sitting inside a pour causes a DRC clearance error, and why a via on the `+3.3V` net automatically joins the power plane without you routing anything.
-- **Layer 2 (GND) sits directly beneath layer 1.** The dielectric between them is thin, typically a few tenths of a millimetre. Every trace on the top layer therefore has its return path a fraction of a millimetre below it. That short vertical distance is what makes the current loop small — the inductance argument from section 2.9, now in three dimensions.
-- The generic diagram labels layer 3 as a single 3.3 V plane. **Ours is slightly different:** `In2.Cu` carries *two* separate islands, `VBUS` before the regulator and `+3.3V` after it, on that same physical layer. Section 4.3 explains how they coexist without touching.
+- **The two inner layers are solid sheets, not traces.** That is the
+  entire difference between a two-layer and a four-layer board. Layers 2
+  and 3 are not "more room for routing". They are continuous copper, and
+  their value comes precisely from being uninterrupted.
+- **The vertical copper barrels are vias.** On our board every via is a
+  through via, drilled through the whole stack. (The illustration is
+  schematic about this; blind and buried vias exist, but they cost extra.)
+  A via passes through every layer, but it **connects only to copper of
+  its own net**. Where a plane of another net lies in its way, KiCad cuts
+  a small clearance ring around it, called an **antipad**. A `+3.3V` via
+  therefore joins the +3.3 V island on `In2.Cu` automatically, without
+  any routing, and passes through the GND plane on `In1.Cu` without
+  touching it.
+- **Layer 2 (GND) lies directly beneath layer 1**, separated by a thin
+  dielectric, typically 0.1–0.2 mm on a standard 1.6 mm board. Every trace
+  on the top layer therefore has its return path a fraction of a
+  millimetre below it (see the next subsection).
+- **The illustration labels layer 3 as a single 3.3 V plane. Ours is
+  different:** `In2.Cu` carries *two* separate islands, `VBUS` before the
+  regulator and `+3.3V` after it. Section 4.3 explains how they coexist
+  without touching.
 
 | Layer | Our board |
 |---|---|
@@ -765,73 +888,390 @@ The guiding principle throughout: **components should follow the path of the sig
 | `In2.Cu` (3) | power islands: `VBUS` and `+3.3V` |
 | `B.Cu` (4) | signals, GND pour |
 
+#### What the planes buy: a return path under every trace
+
+Current flowing along a signal trace must return to its source, and it
+returns through ground. At low frequencies it takes the path of least
+resistance. At high frequencies, including the fast edges of any digital
+signal, it takes the path of least *inductance*, which is **directly
+beneath the signal trace**. If `In1.Cu` is a solid, uninterrupted plane,
+every signal on `F.Cu` has that return path available. The loop formed by
+signal and return is small, so its inductance is small (section 2.9), so
+it radiates little and picks up little.
+
+**Cutting the ground plane destroys exactly that.** A trace routed
+through the ground layer creates a slot. Every signal crossing the slot
+must send its return current around the obstruction, and the loop grows
+by the size of the detour.
+
+> This is why `In1.Cu` carries no signal traces. None.
+
+A slot can also appear without any trace. Each via through the plane
+leaves an antipad, and a tight row of vias can merge their antipads into
+one long gap. Keep vias spaced apart rather than lined up shoulder to
+shoulder.
+
+The same reasoning applies to `B.Cu`, whose nearest plane is `In2.Cu`:
+the power layer. A plane at a steady DC voltage serves as a return path
+just as well as ground, provided it is continuous. But `In2.Cu` is split
+into two islands, and a bottom-layer trace that crosses the gap between
+them loses its return path at that gap. Keep bottom-layer traces over a
+single island where you can, and keep the USB pair on `F.Cu`, above the
+solid ground.
+
 #### Two layers versus four
 
-On a two-layer board there are no inner layers at all: everything — signals, power, ground — shares the top and bottom copper. Ground becomes a patchwork of hand-drawn traces and poured fragments, threaded between whatever else needed to get across the board.
+On a two-layer board there are no inner layers at all. Signals, power
+and ground all share the top and bottom copper. Ground becomes a
+patchwork of hand-drawn traces and poured fragments, threaded between
+whatever else needed to cross the board.
 
 | | Two layers | Four layers |
 |---|---|---|
 | Ground | traces and fragmented pours, routed by hand | one continuous plane |
-| Return path | wherever copper happens to be — often a long detour | directly beneath every trace |
-| Loop area, hence L | large and unpredictable | small and consistent |
+| Return path | wherever copper happens to be, often a long detour | directly beneath every trace |
+| Loop area, hence *L* | large and unpredictable | small and consistent |
 | Power distribution | narrow, meandering traces | a wide, low-impedance plane |
 | Routing space | congested; power and ground consume it | freed up, since power and ground moved inside |
 | EMI | radiates more, picks up more | substantially better |
 | Cost | cheaper | more expensive, though not dramatically at small sizes |
 
-Every line in the right-hand column is the same physics from section 2.9. A continuous plane gives every signal a return path immediately underneath, so the loop the current traces is small, so *L* is small. A poured plane distributes power with far lower resistance and inductance than any trace of practical width. And "never cut the ground plane" means: do not force a return current to detour, because a detour is added loop area, which is added inductance.
+Every line in the right-hand column is the same physics: a small loop
+means small *L*, and a plane distributes power with far lower resistance
+and inductance than any trace of practical width.
 
 #### And yet: this board would work on two layers
 
 It is worth being honest about this rather than pretending otherwise.
 
-Our board has around thirty components and perhaps forty nets. The fastest signal on it is USB Full Speed at 12 Mbit/s — genuinely slow by modern standards. A competent designer could route this on two layers and it would work.
+Our board has around thirty components and some forty nets. The
+ESP32-C3's 160 MHz clock never leaves the module. The fastest signal on
+the PCB itself is USB Full Speed at 12 Mbit/s, which is genuinely slow by
+modern standards. A competent designer could route this board on two
+layers, and it would work.
 
 **We chose four layers anyway, for two reasons.**
 
-The first is technical, and modest. The board carries a Wi-Fi radio and a differential pair. Both benefit from a clean ground reference, and both are exactly the kind of thing that behaves *almost* correctly on a compromised ground plane — the failure mode is not a dead board but reduced range or occasional enumeration failures, which are miserable to diagnose. Given the choice, we removed the variable.
+The first is technical, and modest. The board carries a Wi-Fi radio and
+a differential pair. Both benefit from a clean ground reference, and both
+are exactly the kind of thing that behaves *almost* correctly on a
+compromised ground. The failure mode is not a dead board but reduced
+range or occasional enumeration failures, which are miserable to
+diagnose. Given the choice, we removed the variable.
 
 The second reason is the honest one: **you are here to learn.**
 
-Four-layer stackups, ground planes, power islands, and via stitching are standard practice on essentially every real embedded board you will encounter afterwards. If you learn them here — on a small, forgiving board with thirty components, where a mistake costs nothing and the design is simple enough to hold in your head — you will already know them when you meet a board where they are not optional. Learning to lay out a ground plane for the first time on a complex, dense, fast board is a much worse experience.
+Four-layer stackups, ground planes, power islands and via stitching are
+standard practice on essentially every real embedded board you will meet
+afterwards. Learn them here, on a small, forgiving board with thirty
+components, where a mistake costs nothing and the whole design fits in
+your head. Learning to lay out a ground plane for the first time on a
+dense, fast board is a much worse experience.
 
-So the fourth layer is partly for the signals and partly for you. That is a legitimate engineering decision when the project is a workshop, and it is worth recognising it as a decision rather than mistaking it for a technical necessity. Knowing *which* of your design choices are forced and which are chosen is itself part of the craft.
-
-Four layers buy two things we need at 160 MHz next to a radio.
-
-**First: the return path.** Current flowing along a signal trace must return somewhere. It returns through ground — and not by the shortest geometric route, but by the route of lowest inductance, which at high frequency means **directly beneath the signal trace**. If `In1.Cu` is a solid, uninterrupted ground plane, every signal has a return path immediately below it. The loop the current traces is small. A small loop means little radiation and little susceptibility to interference.
-
-**Second: cutting the ground plane destroys exactly that.** A signal trace routed through the ground layer creates a slot. Every signal crossing that slot must route its return current around the obstruction, and the loop grows by the size of the detour.
-
-> This is why `In1.Cu` carries no signal traces. None.
-
-Power lives on the separate layer `In2.Cu`, divided into islands: 5 V before the regulator, 3.3 V after it. The islands never touch — the regulator is what lies between them.
+So the fourth layer is partly for the signals and partly for you. When
+the project is a workshop, that is a legitimate engineering decision.
+Recognise it as a decision, not a technical necessity: knowing *which* of
+your design choices are forced and which are chosen is itself part of
+the craft.
 
 ### 4.3 Two islands on one layer, and zone priority
 
-Rather than routing VBUS and +3.3 V as traces, we pour them as **copper zones** directly on `In2.Cu`:
+Rather than routing VBUS and +3.3 V as traces, we pour them as **copper
+zones** directly on `In2.Cu`: a small `VBUS` island covering the path
+from the connector through the protection diode to the regulator input,
+and a large `+3.3V` island covering the rest of the board. KiCad keeps
+the two apart according to your clearance rule. The result is two
+independent copper islands on the same physical layer that never touch.
 
-1. Draw a zone on `In2.Cu`, assign it net **VBUS**. It only needs to span the short path from the connector through the protection diode to the regulator input.
-2. Draw a **second, separate** zone on the **same layer**, assign it net **+3.3V**, and pour it across the rest of the board.
-3. KiCad keeps them apart according to your clearance rule — two independent copper islands on the same physical layer, never touching.
+The same tool also creates the solid GND plane on `In1.Cu` and the GND
+pour on `B.Cu`.
 
-**What if the two outlines overlap when you draw them?** This is what **zone priority** is for. Every zone has a priority value, an integer defaulting to 0. When two zones on the same layer overlap, KiCad fills the **higher-priority** zone first, then fills the lower-priority zone everywhere *except* inside the higher-priority zone's area plus clearance. The lower-priority copper is carved away automatically.
+<!-- TODO screenshot: In2.Cu with both islands filled, other layers hidden -->
 
-So give the small `VBUS` island a **higher** priority (say 1) than the large `+3.3V` pour (0). Even if you sketch the `+3.3V` outline roughly across the whole board, KiCad keeps `VBUS` intact and clears 3.3 V copper away from it — no pixel-perfect hand-drawing required.
+#### Drawing a zone in KiCad 10
 
-Double-click a zone outline, or right-click → **Zone Properties**, to find the Priority field. Recent KiCad versions also have a **Zone Manager** panel listing every zone with its layer, net and priority side by side, which is far easier once a board has several overlapping pours.
+1. **Start the tool.** Click *Add Filled Zone* in the right toolbar, or
+   press `Ctrl`+`Shift`+`Z`.
+2. **Click the first corner.** Before you draw anything else, the
+   *Copper Zone Properties* dialog opens. Set:
+   - **Layer**: tick `In2.Cu` only. (One zone can span several layers,
+     but all its layers share one net. A GND zone can therefore cover
+     `In1.Cu` and `B.Cu` at once; a power island should not.)
+   - **Net**: `VBUS` for the first zone.
+   - **Zone name**: something readable, for example `VBUS_island`. You
+     will need it in the Zone Manager.
+   - Leave clearance, minimum width and pad connections at their
+     defaults for now.
+3. **Click the remaining corners.** The outline follows the current line
+   mode (45° by default; `Shift`+`Space` switches between modes).
+   `Backspace` removes the last corner if you misclick.
+4. **Close the outline** by double-clicking, or by clicking on the first
+   corner again.
+5. **Fill the zones** with `B`. KiCad does not refill zones automatically
+   while you edit, so what you see can be out of date. Press `B` after
+   every change you want to judge by eye; `Ctrl`+`B` removes the fill
+   again. The left toolbar can switch between showing filled zones and
+   outlines only, which makes overlapping outlines easier to see.
 
-### 4.4 Connecting pins to inner layers with vias
+Repeat for the second zone: `In2.Cu`, net `+3.3V`, name `3V3_plane`.
+Draw it roughly around the whole board. It does not need to follow the
+board edge precisely, because the fill always keeps the copper-to-edge
+clearance away from `Edge.Cuts`. It also does not need to avoid the
+antenna: the keepout rule area from section 4.1 removes copper there on
+every layer, whatever the zone outline says.
 
-A via is a plated hole connecting copper on different layers. To connect, say, the regulator's output pad on `F.Cu` down to the `+3.3V` island on `In2.Cu`:
+To edit a zone later, click its outline and press `E` for its
+properties, or drag the square handles to move corners.
 
-1. Place a via on that net, at or immediately beside the pad.
-2. The via barrel is plated copper running through the board, touching every layer it passes. It connects automatically to the zone on `In2.Cu` whose net matches.
-3. For power pins — regulator output, VBUS input — use **more than one via in parallel.** This lowers the connection's resistance and inductance and adds redundancy.
+#### What if the two outlines overlap?
 
-Two vias in parallel have roughly half the inductance of one, three have roughly a third. Given `u = L·di/dt` from section 2.9, halving *L* halves the voltage that appears across that connection during a current burst. This is the cheapest improvement available anywhere on a board: one extra via, no extra components, no extra cost.
+This is what **zone priority** is for. When two zones on the same layer
+overlap, KiCad fills the **higher-priority** zone first. It then fills
+the lower-priority zone everywhere *except* inside the higher-priority
+zone's area plus clearance. The lower-priority copper is carved away
+automatically.
 
-For GND this matters even more: every ground pad on `F.Cu` should drop a via straight down to `In1.Cu` right at the pad, so return current has the shortest possible path home. The module's central ground array in the image above is the clearest example on the board.
+So the small `VBUS` island must have **higher** priority than the large
+`+3.3V` pour. You can then draw the `+3.3V` outline roughly across the
+whole board, including over the VBUS area, and KiCad keeps `VBUS` intact
+and clears the 3.3 V copper away from it. No pixel-perfect hand-drawing
+required.
+
+Priority only matters between zones on the **same layer** that
+**overlap**. The GND plane on `In1.Cu` and the islands on `In2.Cu` never
+interact, whatever their priorities are.
+
+#### Setting the priority in KiCad 10: the Zone Manager
+
+KiCad 10 no longer has a priority field in the zone properties dialog.
+Priority is now simply the **order of the zones in the Zone Manager**:
+the higher a zone is in the list, the higher its priority.
+
+1. Open **Tools → Zone Manager**. (The zone properties dialog also has a
+   button that opens it.)
+2. The list on the left shows every zone with its name, net and layers.
+   This is where the zone names from step 2 pay off. Type part of a name
+   or net into the filter box to find a zone quickly.
+3. Selecting a zone shows a preview of it on the right.
+4. **Drag `VBUS_island` above `3V3_plane`.** Moving a zone swaps it with
+   its neighbour, so on a board with many zones you may have to move it
+   several times. On our board, with only a handful of zones, one move
+   is usually enough.
+5. Close the manager and press `B` to refill.
+
+Every zone in KiCad 10 has its own place in the list, even zones on
+different layers or nets. You do not need to arrange them all. Only the
+relative order of zones that overlap on the same layer has any effect.
+
+<!-- TODO screenshot: Zone Manager with VBUS_island above 3V3_plane -->
+
+> **KiCad 9 and earlier** had a numeric **Priority** field directly in
+> the zone properties dialog (default 0). There you would simply give
+> `VBUS_island` priority 1 and leave `3V3_plane` at 0. If you open an
+> older tutorial and cannot find the field, this is why.
+
+#### Common problems
+
+- **The VBUS island disappears after filling.** An inner-layer zone
+  connects only to what reaches it through vias. If nothing on the `VBUS`
+  net has a via into `In2.Cu` yet, KiCad treats the whole fill as an
+  unconnected island and removes it. Place a via next to the connector's
+  VBUS pads and one next to the regulator input, then refill.
+- **The +3.3 V copper floods over the VBUS area.** The order in the Zone
+  Manager is the wrong way round. Move `VBUS_island` up and refill.
+- **Two zones of the same net overlap and leave odd notches or DRC
+  warnings.** Use one zone per net and layer wherever possible. If you
+  need a complex shape, select both zones and use *Merge Zones* from the
+  right-click menu instead of relying on overlap.
+- **Something looks wrong but DRC is clean**, or the other way round.
+  Press `B` first. An unrefilled zone shows the state before your last
+  edit.
+
+### 4.4 Vias: connecting pins, layers and planes
+
+A via is a plated hole joining copper on different layers. On our board
+every via is a **through via**, drilled from `F.Cu` to `B.Cu`. It passes
+through all four layers but **connects only to copper of its own net**.
+On every other layer the copper is cut back around it, leaving an
+antipad (section 4.2). A `+3.3V` via therefore joins the +3.3 V island
+on `In2.Cu` and passes through the GND plane on `In1.Cu` without
+touching it.
+
+That one rule covers the four jobs vias do on this board:
+
+| Job | From | To |
+|---|---|---|
+| power pin to its island | pad on `F.Cu` | `VBUS` or `+3.3V` zone on `In2.Cu` |
+| ground pin to the plane | pad on `F.Cu` | GND zone on `In1.Cu` |
+| signal changes layer | track on `F.Cu` | track on `B.Cu` |
+| stitching | GND pour on `B.Cu` | GND plane on `In1.Cu` |
+
+Through-hole pads need none of this. The header pins, the USB-C shield
+slots and the button pegs are plated holes themselves, so they connect
+to the zone of their net on every layer directly.
+
+#### Before you start: via size
+
+Via diameter and drill are set per net class in **File → Board Setup →
+Design Rules → Net Classes**. A common choice is a 0.6 mm via with a
+0.3 mm drill. Check it against your manufacturer's standard
+capabilities, because smaller drills usually cost extra.
+
+#### Power pins to their island
+
+Every pad on the `VBUS` or `+3.3V` net needs its own path down to
+`In2.Cu`. On our board that means:
+
+- **VBUS**: the connector's VBUS pads, the protection diode, the LDO
+  input (pin 1), the input capacitor and the CE resistor;
+- **+3.3V**: the LDO output (pin 5), the output capacitor, the module's
+  pin 3 and its decoupling capacitors, the LED resistors and every
+  pull-up.
+
+The procedure is the same for each pad:
+
+1. Make `F.Cu` the active layer.
+2. Hover over the pad and press `X` to start routing. The track takes
+   the pad's net.
+3. Move out 0.3–0.5 mm, away from neighbouring pads, and press `V`. A
+   via now hangs on the end of the track.
+4. Click to fix the via. The router continues on the other layer; press
+   `Esc` to stop. The short stub and the via stay.
+5. Press `B` to refill the zones. The ratsnest line from that pad to the
+   zone disappears once the via lands in the filled island.
+
+Use the router for these vias, not the free-via tool. A via created
+while routing inherits the net of the pad you started from, so it cannot
+end up on the wrong net.
+
+**Use more than one via on the power path.** The LDO input and output,
+and the connector's VBUS pads, should each get two vias rather than one.
+Two vias in parallel have roughly half the inductance of one, provided
+they are at least a couple of via diameters apart. Placed
+shoulder-to-shoulder they share their magnetic field and the gain
+shrinks. Given `u = L·di/dt` from section 2.9, halving *L* halves the
+voltage that appears across that connection during a current burst,
+such as a Wi-Fi transmission. The reason is inductance, not current: a
+single 0.3 mm via carries far more current than this whole board draws.
+It is the cheapest improvement available anywhere on a board: one extra
+via, no extra components, no extra cost.
+
+#### Ground pins to the plane
+
+Exactly the same procedure, on the GND net: every GND pad on `F.Cu` gets
+**its own via**, right beside the pad, down to `In1.Cu`. Return current
+then has the shortest possible path home. Do not collect several GND
+pads with traces into one shared via. Each trace adds loop area, which
+is exactly what the plane exists to avoid.
+
+Place vias **beside** small SMD pads, not inside them. An open via inside
+a pad draws solder paste down the hole during reflow and leaves a weak
+joint.
+
+Two places deserve extra care:
+
+- **Decoupling capacitors.** When the module needs a burst of current,
+  it comes from the nearby capacitor, not from the regulator. That
+  current flows in a loop: from the capacitor's `+3.3V` pad to the
+  module's supply pin, through the module to its GND pin, and back to
+  the capacitor's GND pad. The loop's inductance grows with the area it
+  encloses. In order of importance:
+
+  1. **Place the capacitor as close to the supply pin as possible.**
+     This fixes most of the loop. Never move a capacitor away from the
+     pin just to make room for a via.
+  2. **Put its GND via as close to its GND pad as possible**, beside the
+     pad rather than inside it.
+  3. **If there is room, put that via on the side facing the module.**
+     The return current in the plane then reaches it by the shortest
+     route. If there is no room, the side of the pad is fine: the
+     difference is about a millimetre of loop length.
+
+  On our board there is an even better option. The module's pins 1 and
+  2 are GND, right next to pin 3 (+3.3 V). Connect the capacitor's GND
+  pad to pin 1 or 2 with a short, wide track on `F.Cu`. The whole loop
+  then closes on the top layer within a few millimetres, without
+  involving the plane at all. The capacitor still gets its own GND via
+  down to `In1.Cu`, but the via's exact position no longer matters much.
+- **The module's ground array** (the nine `49 GND` squares). Place vias
+  in the gaps between the squares, several of them. This array is the
+  module's main return path and its main route for heat.
+
+#### A signal from `F.Cu` to `B.Cu`
+
+When a track has to cross another one, it can dive to the bottom layer
+and come back up:
+
+1. Start the track on `F.Cu` with `X`, as usual.
+2. At the point where you want to change layers, press `V` and click.
+   Routing continues on the other layer of the active layer pair, which
+   is `F.Cu`/`B.Cu` by default. To pick the target layer explicitly, use
+   `<` instead of `V`.
+3. Continue on `B.Cu` and click the destination pad to finish. To come
+   back up, press `V` again.
+
+A via placed this way belongs to the track: if the track's net ever
+changes, the via changes with it.
+
+**Mind the return path.** On `F.Cu` a signal's return current flows in
+the GND plane on `In1.Cu`. On `B.Cu` it flows in the power islands on
+`In2.Cu`. At the via, the return current has to hop from one plane to
+the other, and the only path between them is through the nearest
+decoupling capacitor. For slow signals (buttons, LEDs, GPIOs to the
+headers) this does not matter, and they may change layers freely. The
+USB pair should **not change layers at all**: route `D+` and `D−`
+entirely on `F.Cu`, above the solid ground.
+
+#### Stitching vias
+
+Stitching vias are GND vias that belong to no pad. They tie the GND
+copper on different layers together, here the `B.Cu` pour to the plane
+on `In1.Cu`.
+
+They are needed because bottom-layer traces chop the `B.Cu` pour into
+fragments. A fragment connected to ground at one point only behaves like
+a small antenna. A fragment connected nowhere is either removed by the
+zone fill or left floating. Stitching turns all GND copper into one
+low-impedance structure.
+
+Where to put them:
+
+- **Every `B.Cu` fragment** gets at least two, one at each end.
+- **Along the board edges** and **around the edge of the antenna
+  keepout**. (Not inside it: no copper and no vias there.)
+- **Near the USB connector** and around the module's ground.
+- **Elsewhere**, a loose grid of roughly 5 mm is plenty for this board.
+
+The usual rule of thumb is spacing below 1/20 of the wavelength of the
+highest frequency present. For 2.4 GHz that is about 3 mm in FR4, which
+is why the spacing gets denser near the antenna.
+
+In KiCad 10:
+
+1. Select **Add Free-Standing Via** in the right toolbar, or press
+   `Ctrl`+`Shift`+`X`.
+2. Click on the GND pour. A free via placed on a zone takes the zone's
+   net and keeps it even if you move it later.
+3. **Check the net.** On our board the GND plane and the +3.3 V island
+   overlap almost everywhere, so select the via and confirm in the
+   Properties panel that its net is `GND`. Change it there if it is not.
+4. For many vias, copy a correct GND via (`Ctrl`+`C`, `Ctrl`+`V`), or
+   select it and use **Create Array** (`Ctrl`+`T`) for a grid. Then delete
+   the ones that land on other copper; DRC will point them out.
+5. Press `B` and run DRC.
+
+Every stitching via also perforates the +3.3 V island on `In2.Cu` with
+an antipad. Keep them spaced rather than in tight rows, so that the
+antipads do not merge into a slot (section 4.2).
+
+#### When you are done
+
+- Press `B`. There should be no ratsnest lines left on the `GND`,
+  `VBUS` or `+3.3V` nets.
+- Run DRC and check for *unconnected items* and *isolated copper*.
+- Hide all layers except `In1.Cu` (`Ctrl`+`H` cycles the display modes)
+  and look at the plane: it should be one piece, perforated by antipads
+  but not sliced by them.
 
 ---
 
