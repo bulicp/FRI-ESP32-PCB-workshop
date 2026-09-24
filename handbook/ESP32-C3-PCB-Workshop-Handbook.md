@@ -171,24 +171,59 @@ This is why the digital sheet sees only **one** `USB_D+` and one `USB_D−` net,
 
 ### 2.5 CC1 / CC2 — why exactly 5.1 kΩ
 
-USB-C negotiates power and role through a simple resistor-divider trick on the CC lines.
+USB-C decides *whether* to power a cable, *which way round* the plug is,
+and *how much current* is on offer, using nothing more than resistors on
+the two CC lines. Both ends measure the CC voltage, but for different reasons.
 
-A device like ours, acting as a **sink** (power consumer), pulls each CC line down to GND through a resistor called **Rd**, fixed by the USB-C specification at **5.1 kΩ ±20%**. The host, acting as a **source**, pulls the same CC line up toward its own supply through a resistor called **Rp**, whose value it deliberately varies (56 kΩ, 22 kΩ, or 10 kΩ) to advertise how much current it is willing to supply.
+![CC divider: the source's Rp and our board's Rd meet on the single CC wire.
+The source measures to detect attachment and orientation; the sink may measure
+to learn the advertised current.](figures/usb-c-cc-divider.svg)
 
-The value 5.1 kΩ is not arbitrary. It is the fixed reference against which the host's varying Rp forms a voltage divider, and the specification defines precise voltage bands the host measures on the CC line:
+*Further reading: Texas Instruments, "USB Type-C Configuration Channel (CC)
+Controller Selection Guide", SDAA284, March 2026.*
 
-| Voltage on CC (with our fixed 5.1 kΩ Rd) | Meaning |
-|---|---|
-| below ~0.20 V | no sink attached |
-| ~0.20 – 0.66 V | default USB power (500 mA / 900 mA) |
-| ~0.66 – 1.23 V | 1.5 A available |
-| ~1.23 – 2.04 V | 3.0 A available |
+The **source** (host, charger) pulls CC up through a resistor **Rp**. The
+**sink** (our board) pulls CC down to GND through **Rd = 5.1 kΩ**, a value
+fixed by the specification. The two form a voltage divider.
 
-Because **every** compliant sink in the world uses the same 5.1 kΩ, this divider maths is predictable and standardised: the host can determine current capability with a simple analogue voltage measurement, with no digital communication at all. Use a different resistor and the divider lands in the wrong band — the host may refuse to supply power, or supply the wrong amount.
+**What the source measures — "is anyone there?"**
+A USB-C source keeps VBUS switched *off* until it sees a valid Rd on one of
+its CC pins. It distinguishes three cases: open (nothing attached), Rd (a
+sink, so VBUS is enabled) and Ra ≈ 1 kΩ (an e-marked cable or audio
+adapter, not a sink). The pin on which Rd appears also tells the source the
+plug orientation.
 
-**Without these two resistors, VBUS never appears.** The board stays dead and it looks exactly as though the chip is faulty. This is the single most common first-board failure, which is why it appears this early in the handbook.
+**What the sink measures — "how much may I draw?"**
+The source advertises its current capability by its choice of Rp. It does
+not adjust anything for the sink. A sink that cares measures the voltage
+across its own Rd:
 
-We use CC1 *and* CC2, with two separate resistors, never tied together, for the same reversibility reason as D+/D−: only one of the two CC pins actually contacts the cable's single real CC wire, and which one depends on plug orientation.
+| Source Rp (to 5 V) | CC voltage across 5.1 kΩ | Sink band | Sink may draw |
+|---|---|---|---|
+| 56 kΩ | ≈ 0.42 V | 0.20 – 0.66 V | default (500/900 mA) |
+| 22 kΩ | ≈ 0.94 V | 0.66 – 1.23 V | 1.5 A |
+| 10 kΩ | ≈ 1.69 V | 1.23 – 2.04 V | 3.0 A |
+| — | < 0.20 V | — | no source attached |
+
+Our board never reads CC: the ESP32-C3 draws far less than 500 mA, so the
+advertised current is irrelevant to us. **On our board the resistors exist
+for one reason only: so that the source recognises a sink and turns VBUS on.**
+
+**Without them, VBUS never appears on a USB-C ↔ USB-C cable.** The board
+stays dead and looks exactly like a faulty chip. This is the most common
+first-board failure. Confusingly, the same board *works* with a USB-A → C
+cable, because that cable has Rp built in and USB-A always supplies VBUS.
+
+Use two separate resistors, one per CC pin, and never tie CC1 and CC2
+together. Only one CC pin meets the cable's CC wire (depending on
+orientation). Our board has Rd on both CC pins, but the cable carries only one CC wire,
+so at any moment only one of them is actually connected to the source's Rp.
+The source sees Rd on one of its own CC pins and nothing on the other;
+which one tells it how the plug sits in *its* receptacle. Our board sees
+the same thing from its side: one CC pin at the divider voltage, the other
+at 0 V. Flip the plug and the two pins swap roles, which is exactly why
+both Rd resistors must be fitted.
+
 
 #### Other USB-C port roles
 
@@ -486,11 +521,101 @@ Plenty bright for an indicator with modern LEDs, and comfortably below the ESP32
 
 ### 2.12 Breakout headers, and why the board is not a finished product
 
-Two `Conn_01x08` headers, 2.54 mm pitch, expose the free GPIOs, power and ground.
+![Breakout headers J2 (power) and J3 (signals). The red crosses are
+KiCad's marking for DNP (Do Not Populate) symbols.](figures/pin-headers-schematic.png)
 
-This is a deliberate decision. Without them the board would be a device that blinks two LEDs. With them it is a **development board**: you can attach a sensor, a display, a relay, anything. When the workshop is over, the board remains useful.
+Two 8-pin headers (`Conn_01x08`, 2.54 mm pitch) bring the board's power
+rails and all spare GPIOs out to the edge. This is a deliberate decision.
+Without them the board would be a device that blinks two LEDs. With them
+it is a **development board**: you can attach a sensor, a display, a relay
+module, a logic analyser. When the workshop is over, the board remains
+useful.
 
-The 2.54 mm pitch is chosen to match breadboards and standard jumper wires.
+The 2.54 mm (0.1") pitch is the universal hobby standard: it fits
+breadboards, perfboards, Dupont jumper wires and most sensor breakout
+modules.
+
+#### What is on the headers
+
+J2 carries power only:
+
+| J2 pin | Signal | Notes |
+|---|---|---|
+| 1, 8 | +3.3 V | output of the on-board LDO |
+| 3, 4 | VBUS | 5 V straight from the USB connector |
+| 5, 6 | GND | |
+| 2, 7 | — | not connected |
+
+J3 carries signals:
+
+| J3 pin | Signal | Notes |
+|---|---|---|
+| 1 | TXD0 (GPIO21) | UART0 transmit |
+| 2 | RXD0 (GPIO20) | UART0 receive |
+| 3 | GND | |
+| 4 | GPIO5 | digital only in practice (see below) |
+| 5 | GPIO4 | ADC1 channel 4 |
+| 6 | GPIO3 | ADC1 channel 3 |
+| 7 | GPIO1 | ADC1 channel 1 |
+| 8 | GPIO0 | ADC1 channel 0 |
+
+The order of J3 is not accidental. TXD0, RXD0 and GND sit on three
+adjacent pins, so a USB-to-serial adapter plugs onto pins 1–3 with a
+single 3-way jumper cable.
+
+#### Why these GPIOs and not others
+
+The ESP32-C3 has three **strapping pins** (GPIO2, GPIO8 and GPIO9) whose
+level at reset decides how the chip boots. A sensor or a relay module
+that pulls one of them the wrong way at power-up can stop the board from
+booting, or worse, briefly switch a relay while it starts. None of the
+strapping pins is on the headers. The LEDs and buttons use the remaining
+pins, and everything free and safe to use comes out on J3.
+
+A few properties are worth knowing before you connect something:
+
+- **GPIO0, GPIO1, GPIO3 and GPIO4** are ADC1 inputs, so use them for
+  analogue sensors (potentiometers, photoresistors, analogue temperature
+  sensors).
+- **GPIO5** belongs to ADC2, which ESP-IDF does not support on the
+  ESP32-C3. Treat it as a digital pin.
+- **TXD0/RXD0** are UART0. The boot ROM prints its start-up messages on
+  TXD0 at 115200 baud, so a device listening on that pin will receive
+  some text at every reset. If you do not need the UART, both pins can
+  be used as ordinary GPIOs.
+
+#### Electrical limits
+
+- **All signals are 3.3 V.** The ESP32-C3 is not 5 V tolerant. A 5 V
+  module driving a GPIO will damage the chip over time or at once. Use a
+  level shifter or a resistor divider.
+- **VBUS is raw USB 5 V**, intended for 5 V peripherals such as relay
+  modules or LED strips. It is limited by what the USB host provides,
+  typically 500 mA for the whole board.
+- **+3.3 V** comes from the same LDO that powers the ESP32-C3, whose
+  Wi-Fi transmissions draw current peaks of a few hundred milliamps. Keep
+  external 3.3 V loads modest (sensors, small displays) and power
+  anything heavier from VBUS.
+- **Never connect an external supply** to VBUS or +3.3 V while the board
+  is plugged into USB. Two supplies fighting each other can back-feed the
+  host's USB port or the LDO.
+
+#### Why the headers are marked DNP
+
+The red crosses in the schematic mean the symbols carry KiCad's
+**DNP (Do Not Populate)** attribute. Their footprints are on the PCB, but
+they are left out of the assembly BOM and placement file, so the
+manufacturer does not fit them. You solder the headers yourself.
+
+There are three reasons for this:
+
+- **Choice.** You decide what to fit: straight male pins for a
+  breadboard, angled pins, female sockets, or nothing at all if the
+  board is going to be glued flat inside an enclosure.
+- **Cost.** Through-hole parts are assembled separately from SMD parts
+  and add to the price of every board.
+- **Practice.** Soldering a 2.54 mm header is the easiest possible
+  through-hole job, which makes it a good first soldering exercise.
 
 ---
 
