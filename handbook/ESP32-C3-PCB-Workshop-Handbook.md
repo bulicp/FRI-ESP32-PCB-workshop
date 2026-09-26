@@ -685,6 +685,33 @@ An entirely ordinary GPIO input on GPIO10, with its own 10 kΩ pull-up. It has n
 
 > **A warning for your own designs.** On this board the strapping pins are deliberately kept off the headers (section 2.12). On a board where they are exposed, anything that holds `GPIO9` low at reset sends the chip into download mode instead of starting your firmware, and `GPIO2` and `GPIO8` should also stay pulled up. This is the classic source of *"my board suddenly died"* — it did not die, it is booting into the wrong mode.
 
+#### Why 10 kΩ, and not 1 kΩ or 1 MΩ
+
+Every pull-up on this sheet has the same two jobs, and they pull in opposite directions:
+
+- **Hold the pin firmly high** when nothing else is driving it, so that leakage currents and electrical noise cannot drag it towards a false low. This wants a **small** resistance.
+- **Give way easily** when the button (or anything else) pulls the pin low, without wasting current. This wants a **large** resistance.
+
+The value is a compromise between the two. Compare three candidates on a 3.3 V pin with the 100 nF debounce capacitor:
+
+| Pull-up | Current while the button is held | τ with 100 nF | Resistance to leakage and noise |
+|---|---|---|---|
+| 1 kΩ | 3.3 mA | 0.1 ms | very good |
+| **10 kΩ** | **0.33 mA** | **1 ms** | **good** |
+| 1 MΩ | 3.3 µA | 100 ms | poor |
+
+**Why not 1 kΩ?** It works, but it is needlessly strong. Every press burns 3.3 mA for as long as the button is held, and anything that has to pull the pin low against it, a button, a transistor, a programming adapter, must sink ten times more current than with 10 kΩ. With the same capacitor, the time constant also shrinks to 0.1 ms, too short to filter contact bounce well.
+
+**Why not 1 MΩ?** It saves current, but the pin becomes a weak, high-impedance node:
+
+- **Leakage turns into voltage.** Leakage currents from the pin, the capacitor and a slightly dirty board surface are tiny, but through 1 MΩ even 1 µA becomes a 1 V drop, a third of the way to a false low.
+- **Noise couples in easily.** A high-impedance node picks up whatever is nearby by capacitive coupling: neighbouring traces, a finger, and on this board the module's own 2.4 GHz transmitter.
+- **Edges become slow.** With 100 nF the time constant grows to 100 ms, so after a press the pin needs about half a second (5τ) to return high. On `EN` that stretches every reset; on a strapping pin it risks the ROM sampling the pin before it has risen.
+
+**10 kΩ** sits comfortably between the two: a third of a milliamp while pressed, a firm enough hold against leakage and noise, and a 1 ms time constant with the debounce capacitor. For ordinary logic inputs, anything from about 4.7 kΩ to 47 kΩ works, and 10 kΩ is simply the conventional middle. Buses behave differently: I²C lines, for example, use stronger pull-ups of 2.2–4.7 kΩ, because the pull-up has to charge the whole bus capacitance fast enough for the bus speed.
+
+**Why not the chip's internal pull-ups?** The ESP32-C3 has them, but they are weak (tens of kilohms), and firmware can reconfigure them. For the strapping pins and `EN`, which are read before any firmware runs, the level must be guaranteed by hardware. For the USER button an internal pull-up would work, but the external one makes the circuit independent of what the program does.
+
 #### Why 100 nF next to the switches
 
 Mechanical switches do not produce a single clean transition. The metal contacts physically bounce for a few milliseconds, producing a rapid train of spurious transitions — *contact bounce*. Without filtering, firmware can read one press as several.
