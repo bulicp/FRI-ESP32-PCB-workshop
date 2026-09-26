@@ -426,7 +426,25 @@ A **low-dropout linear regulator** takes a higher input voltage and produces a c
 - **The reference** is a precise, temperature-stable internal voltage, V<sub>REF</sub>.
 - **The error amplifier** compares FB (on its + input) with V<sub>REF</sub> (on its − input) and drives the transistor's gate with the difference.
 
-Follow one disturbance round the loop. The ESP32-C3 starts a Wi-Fi transmission and draws more current. V<sub>OUT</sub> sags a little, so FB drops below V<sub>REF</sub>. The amplifier's output falls, pulling the gate further below the source; the transistor conducts more, and V<sub>OUT</sub> rises back. If V<sub>OUT</sub> rises too far, the amplifier's output rises and throttles the transistor back. This is negative feedback, and it only works with the inputs this way round: with + and − swapped, a sagging output would switch the transistor *off* and the regulator would collapse instead of correcting. The loop settles where FB equals V<sub>REF</sub>, which fixes the output at
+Follow one disturbance round the loop. The ESP32-C3 starts a Wi-Fi transmission and draws more current. V<sub>OUT</sub> sags a little, so FB drops below V<sub>REF</sub>. The amplifier's output falls, pulling the gate further below the source; the transistor conducts more, and V<sub>OUT</sub> rises back. If V<sub>OUT</sub> rises too far, the amplifier's output rises and throttles the transistor back. This is negative feedback, and it only works with the inputs this way round: with + and − swapped, a sagging output would switch the transistor *off* and the regulator would collapse instead of correcting.
+
+**Why the feedback goes to the + input.** This looks wrong at first sight. With an ordinary op-amp circuit you learn that feedback must go to the − input, because feedback to the + input is positive feedback. That rule assumes the path from the amplifier's output back to its input does not invert the signal, as with a plain resistor network. Here the P-MOSFET sits in that path, and it **does** invert: raising its gate lowers its output. The sign of the whole loop is the product of the signs of its stages:
+
+| Stage | When its input rises … | Sign |
+|---|---|---|
+| error amplifier, FB on + | its output rises | + |
+| P-MOSFET, gate → V<sub>OUT</sub> | V<sub>SG</sub> shrinks, less current flows, V<sub>OUT</sub> falls | − |
+| divider R1/R2, V<sub>OUT</sub> → FB | FB rises | + |
+| **whole loop** | (+) · (−) · (+) | **− : negative feedback** |
+
+Move FB to the − input and the first row becomes "−", the product becomes "+", and the loop turns into positive feedback. Because the transistor already inverts, the amplifier must not invert as well.
+
+Two variants you will meet elsewhere:
+
+- **Regulators with a follower transistor**, an NPN or an N-MOSFET with the output on its emitter or source, as in the classic 7805 or LM317. Such a transistor does *not* invert: raising its base raises the output. There the amplifier must invert, so V<sub>REF</sub> goes to the + input and FB to the −. This is the version most textbooks draw, which is why it feels familiar.
+- **Datasheets of some P-MOSFET LDOs draw V<sub>REF</sub> on the + input.** Those parts usually have an extra inverting driver stage between the amplifier and the gate, which flips the sign once more.
+
+The rule that always holds is the one in the table: **count the inversions around the loop. An odd number means negative feedback.** The loop settles where FB equals V<sub>REF</sub>, which fixes the output at
 
 ```
 V_OUT = V_REF · (1 + R1/R2)
