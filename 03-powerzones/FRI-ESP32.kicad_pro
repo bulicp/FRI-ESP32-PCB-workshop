@@ -798,7 +798,7 @@
         "uuid": "0e2f72cc-6091-4cb1-8e64-7efe93f4d604"
       }
     ],
-    "used_designators": "FID1,U4,RESET2",
+    "used_designators": "D4,FID1,U4,RESET2",
     "variants": []
   },
   "sheets": [
