@@ -27,7 +27,7 @@ jobs:
         run: mdbook build
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./book
+          path: ./book/book
 
   deploy:
     needs: build
