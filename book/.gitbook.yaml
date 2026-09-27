@@ -1,0 +1,5 @@
+root: ./src/
+
+structure:
+  readme: intro.md
+  summary: SUMMARY.md

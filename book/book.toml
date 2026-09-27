@@ -1,0 +1,9 @@
+[book]
+title = "Build Your Own ESP32 Computer — A KiCad PCB Design Handbook"
+authors = ["Pa3cio, UL FRI"]
+language = "en"
+src = "src"
+
+[output.html]
+# Uncomment and set to your repository to get an "edit on GitHub" link:
+# git-repository-url = "https://github.com/USER/REPO"
