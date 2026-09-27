@@ -5,5 +5,7 @@ language = "en"
 src = "src"
 
 [output.html]
-# Uncomment and set to your repository to get an "edit on GitHub" link:
-# git-repository-url = "https://github.com/USER/REPO"
+default-theme = "light"
+preferred-dark-theme = "coal"
+additional-css = ["fri.css"]
+# git-repository-url = "https://github.com/bulicp/FRI-ESP32-PCB-workshop"

@@ -1,0 +1,72 @@
+/* FRI ESP32 PCB workshop theme: warm paper, solder-mask green accents */
+
+.light, html:not(.js) {
+    --bg: #fdfcf9;
+    --fg: #1f2328;
+
+    --sidebar-bg: #f3f1ea;
+    --sidebar-fg: #2b2f33;
+    --sidebar-active: #1b7a47;
+    --sidebar-spacer: #e6e3da;
+    --sidebar-header-border-color: #1b7a47;
+
+    --links: #1b7a47;
+    --inline-code-color: #7a3e00;
+    --theme-hover: #e8e5dc;
+
+    --quote-bg: #eef6f0;
+    --quote-border: #1b7a47;
+
+    --table-border-color: #e3e0d8;
+    --table-header-bg: #dcebe1;
+    --table-alternate-bg: #f7f5f0;
+
+    --searchresults-li-bg: #e3efe6;
+    --search-mark-bg: #b9e0c6;
+    --footnote-highlight: #1b7a47;
+}
+
+.coal {
+    --bg: #16191c;
+    --fg: #d8dcdf;
+
+    --sidebar-bg: #1d2125;
+    --sidebar-fg: #c4c9cd;
+    --sidebar-active: #4cc38a;
+    --sidebar-header-border-color: #4cc38a;
+
+    --links: #4cc38a;
+    --inline-code-color: #f0b27a;
+
+    --quote-bg: #1c2621;
+    --quote-border: #2f7a52;
+
+    --table-border-color: #2a3035;
+    --table-header-bg: #24302a;
+    --table-alternate-bg: #1b1f22;
+
+    --searchresults-li-bg: #24302a;
+    --search-mark-bg: #2f7a52;
+    --footnote-highlight: #4cc38a;
+}
+
+/* Quotes and callouts: a green bar on the left instead of lines above and below */
+blockquote {
+    border-block-start: none;
+    border-block-end: none;
+    border-inline-start: 4px solid var(--quote-border);
+    border-radius: 0 6px 6px 0;
+}
+
+/* Chapter titles underlined in the accent colour */
+.content h1 {
+    border-bottom: 2px solid var(--sidebar-active);
+    padding-bottom: 0.2em;
+}
+
+/* Figures: centred, with a little breathing room */
+.content img {
+    display: block;
+    margin: 1.2em auto;
+    max-width: 100%;
+}
