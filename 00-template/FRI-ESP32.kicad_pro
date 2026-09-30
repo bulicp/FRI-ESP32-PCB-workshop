@@ -61,7 +61,7 @@
           "hatch_smoothing_value": 0.1,
           "hatch_thickness": 1.0,
           "min_clearance": 0.5,
-          "min_island_area": 10.0,
+          "min_island_area": 0.0013161349,
           "min_thickness": 0.25,
           "pad_connection": 2,
           "remove_islands": 0,
@@ -669,13 +669,13 @@
           "group_by": true,
           "label": "Exclude from BOM",
           "name": "${EXCLUDE_FROM_BOM}",
-          "show": false
+          "show": true
         },
         {
           "group_by": true,
           "label": "Exclude from Board",
           "name": "${EXCLUDE_FROM_BOARD}",
-          "show": false
+          "show": true
         },
         {
           "group_by": true,
@@ -755,7 +755,7 @@
       "include_excluded_from_bom": true,
       "name": "",
       "sort_asc": true,
-      "sort_field": "Reference"
+      "sort_field": "LCSC"
     },
     "bus_aliases": {},
     "connection_grid_size": 50.0,
@@ -798,7 +798,7 @@
         "uuid": "0e2f72cc-6091-4cb1-8e64-7efe93f4d604"
       }
     ],
-    "used_designators": "D1,U4,RESET2",
+    "used_designators": "USRBUTTON1,BOOT1,J1-3,R1-11,#FLG1-2,RESET1-2,U1-3,C1-7,#PWR1-28,D1-3",
     "variants": []
   },
   "sheets": [
